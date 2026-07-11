@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="lfMarkTitle">
+  <title id="lfMarkTitle">LF Acceso Style</title>
+  <defs>
+    <linearGradient id="lfBadgeGrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1d2c4d"/>
+      <stop offset="1" stop-color="#0b1120"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Insignia -->
+  <rect x="1.5" y="1.5" width="61" height="61" rx="17" fill="url(#lfBadgeGrad)" stroke="#b9974a" stroke-width="1.3"/>
+  <rect x="4" y="4" width="56" height="24" rx="13" fill="#ffffff" opacity=".035"/>
+
+  <!-- Monograma L + F -->
+  <g fill="none" stroke="#eef2f8" stroke-width="5.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M13 17 V45 H24"/>
+    <path d="M29 17 V45"/>
+    <path d="M29 17 H40"/>
+    <path d="M29 30 H38"/>
+  </g>
+
+  <!-- Acento dorado: flecha de acceso -->
+  <path d="M47 22 L54 32 L47 42" fill="none" stroke="#d6b25e" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

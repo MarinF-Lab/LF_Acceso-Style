@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LF Acceso Style — Admin</title>
+  <meta name="theme-color" content="#0b0d12" />
+  <link rel="icon" type="image/png" href="assets/logo-icon-cropped.png" />
+  <link rel="stylesheet" href="admin.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body class="admin-body">
+
+  <!-- ===== LOGIN ===== -->
+  <div id="loginScreen" class="login-screen">
+    <div class="login-box">
+      <img class="login-logo-icon" src="assets/logo-icon-cropped.png" alt="" />
+      <div class="login-logo">ACCESO <span>STYLE</span></div>
+      <p class="login-sub">Panel de Administración</p>
+      <form id="loginForm" class="login-form">
+        <div class="form-group">
+          <label for="loginPassword">Contraseña</label>
+          <div class="input-eye">
+            <input type="password" id="loginPassword" placeholder="Ingresa tu contraseña" autocomplete="current-password" />
+            <button type="button" id="togglePwd" class="eye-btn" aria-label="Mostrar contraseña">
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="login-error" id="loginError" style="display:none">Contraseña incorrecta.</div>
+        <button type="submit" class="btn-admin btn-admin--primary btn-full">Ingresar</button>
+        <p class="login-hint">Contraseña por defecto: <code>lfacceso2026</code> — cámbiala en Configuración.</p>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== ADMIN APP ===== -->
+  <div id="adminApp" style="display:none">
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <aside class="sidebar">
+      <div class="sidebar__logo">
+        <img src="assets/logo-icon-cropped.png" alt="" />
+        <span>Acceso <b>Style</b></span>
+        <button class="sidebar__close" id="sidebarClose" aria-label="Cerrar menú">✕</button>
+      </div>
+      <nav class="sidebar__nav">
+        <button class="nav-item active" data-view="dashboard">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </button>
+        <button class="nav-item" data-view="products">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+          Productos
+        </button>
+        <button class="nav-item" data-view="add">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          Agregar producto
+        </button>
+        <button class="nav-item" data-view="categories">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Categorías
+        </button>
+        <button class="nav-item" data-view="orders">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6l1 4H8l1-4z"/><path d="M4 6h16l-1.5 14a2 2 0 01-2 2H7.5a2 2 0 01-2-2L4 6z"/></svg>
+          Pedidos
+          <span class="nav-badge" id="ordersBadge" hidden>0</span>
+        </button>
+        <button class="nav-item" data-view="settings">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          Configuración
+        </button>
+      </nav>
+      <div class="sidebar__footer">
+        <a href="index.html" target="_blank" class="view-store-btn">
+          <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Ver tienda
+        </a>
+        <button class="logout-btn" id="logoutBtn">
+          <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Cerrar sesión
+        </button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="burger-admin" id="burgerAdmin" aria-label="Menú">
+          <span></span><span></span><span></span>
+        </button>
+        <h1 id="viewTitle">Dashboard</h1>
+      </header>
+
+      <!-- ===== DASHBOARD ===== -->
+      <section class="view active" id="view-dashboard">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-card__label">Productos</span>
+            <span class="stat-card__value" id="statProducts">0</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card__label">Pedidos nuevos</span>
+            <span class="stat-card__value" id="statOrdersNew">0</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card__label">Pedidos en curso</span>
+            <span class="stat-card__value" id="statOrdersProgress">0</span>
+          </div>
+          <div class="stat-card stat-card--warn">
+            <span class="stat-card__label">Stock bajo (&lt;3)</span>
+            <span class="stat-card__value" id="statLowStock">0</span>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Últimos pedidos</h2>
+          <div class="table-wrap">
+            <table class="admin-table" id="dashboardOrdersTable">
+              <thead><tr><th>N°</th><th>Cliente</th><th>Total</th><th>Pago</th><th>Estado</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== PRODUCTOS ===== -->
+      <section class="view" id="view-products">
+        <div class="view-toolbar">
+          <input type="search" id="productSearch" placeholder="Buscar producto..." class="admin-input" />
+          <button class="btn-admin btn-admin--primary" id="goAddProduct">+ Nuevo producto</button>
+        </div>
+        <div class="table-wrap">
+          <table class="admin-table" id="productsTable">
+            <thead><tr><th></th><th>Nombre</th><th>Categoría</th><th>Precio</th><th>Stock total</th><th>Estado</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===== AGREGAR / EDITAR PRODUCTO ===== -->
+      <section class="view" id="view-add">
+        <form class="panel form-grid" id="productForm">
+          <input type="hidden" id="productId" />
+          <div class="form-group">
+            <label for="pName">Nombre del producto</label>
+            <input type="text" id="pName" required placeholder='Hoodie Oversize "Shadow"' />
+          </div>
+          <div class="form-group">
+            <label for="pCategory">Categoría</label>
+            <select id="pCategory">
+              <option value="hombre">Hombre</option>
+              <option value="unisex">Unisex</option>
+              <option value="novedades">Novedades</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="pType">Tipo (para filtros)</label>
+            <select id="pType">
+              <option value="polera">Polera</option>
+              <option value="poleron">Polerón</option>
+              <option value="pantalon">Pantalón</option>
+              <option value="chaqueta">Chaqueta</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="pPrice">Precio (CLP)</label>
+            <input type="number" id="pPrice" min="0" step="1" required placeholder="34990" />
+          </div>
+          <div class="form-group">
+            <label for="pTag">Etiqueta</label>
+            <select id="pTag">
+              <option value="">Ninguna</option>
+              <option value="nuevo">Nuevo</option>
+              <option value="top">Top ventas</option>
+            </select>
+          </div>
+          <div class="form-group form-group--full">
+            <label for="pDesc">Descripción</label>
+            <textarea id="pDesc" rows="3" placeholder="Detalle del producto..."></textarea>
+          </div>
+          <div class="form-group form-group--full">
+            <label for="pImageFile">Imagen del producto</label>
+            <input type="file" id="pImageFile" accept="image/*" />
+            <input type="url" id="pImageUrl" placeholder="...o pega una URL de imagen" class="admin-input" style="margin-top:.5rem" />
+            <img id="pImagePreview" class="image-preview" hidden />
+          </div>
+          <div class="form-group form-group--full">
+            <label>Colores disponibles (separados por coma, en hex: #111111, #2f4b7a)</label>
+            <input type="text" id="pColors" class="admin-input" placeholder="#111111, #2f4b7a, #5a5f66" />
+          </div>
+          <div class="form-group form-group--full">
+            <label>Stock por talla</label>
+            <div class="size-stock-grid" id="sizeStockGrid">
+              <div class="size-stock-item"><span>S</span><input type="number" min="0" data-size="S" value="0" /></div>
+              <div class="size-stock-item"><span>M</span><input type="number" min="0" data-size="M" value="0" /></div>
+              <div class="size-stock-item"><span>L</span><input type="number" min="0" data-size="L" value="0" /></div>
+              <div class="size-stock-item"><span>XL</span><input type="number" min="0" data-size="XL" value="0" /></div>
+            </div>
+          </div>
+          <div class="form-actions form-group--full">
+            <button type="button" class="btn-admin" id="cancelProductForm">Cancelar</button>
+            <button type="submit" class="btn-admin btn-admin--primary" id="saveProductBtn">Guardar producto</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- ===== CATEGORÍAS ===== -->
+      <section class="view" id="view-categories">
+        <div class="view-toolbar">
+          <p class="view-intro">Las categorías que aparecen en la portada de la tienda. Arrastra el orden con las flechas, oculta las que no quieras mostrar, o crea nuevas.</p>
+          <button class="btn-admin btn-admin--primary" id="addCategoryBtn">+ Nueva categoría</button>
+        </div>
+        <div class="table-wrap">
+          <table class="admin-table" id="categoriesTable">
+            <thead><tr><th>Orden</th><th>Nombre</th><th>Descripción</th><th>Visible</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="panel category-form" id="categoryForm" hidden>
+          <h2 id="categoryFormTitle">Nueva categoría</h2>
+          <input type="hidden" id="categoryId" />
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="catName">Nombre</label>
+              <input type="text" id="catName" class="admin-input" placeholder="Ej: Poleras" />
+            </div>
+            <div class="form-group form-group--full">
+              <label for="catDesc">Descripción</label>
+              <input type="text" id="catDesc" class="admin-input" placeholder="Texto corto que se muestra en la tarjeta" />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn-admin" id="cancelCategoryForm">Cancelar</button>
+            <button type="button" class="btn-admin btn-admin--primary" id="saveCategoryBtn">Guardar categoría</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== PEDIDOS ===== -->
+      <section class="view" id="view-orders">
+        <div class="orders-layout">
+          <div class="table-wrap">
+            <table class="admin-table" id="ordersTable">
+              <thead><tr><th>N°</th><th>Fecha</th><th>Cliente</th><th>Total</th><th>Pago</th><th>Estado</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="panel order-detail" id="orderDetail">
+            <p class="order-detail__empty">Selecciona un pedido para ver el detalle.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== CONFIGURACIÓN ===== -->
+      <section class="view" id="view-settings">
+        <form class="panel form-grid" id="settingsForm">
+          <h2 class="form-group--full">Contacto y proveedor</h2>
+          <div class="form-group">
+            <label for="sWhatsappStore">WhatsApp de la tienda (para el cliente)</label>
+            <input type="text" id="sWhatsappStore" class="admin-input" placeholder="+56 9 1234 5678" />
+          </div>
+          <div class="form-group">
+            <label for="sWhatsappSupplier">WhatsApp del proveedor (arma el pedido)</label>
+            <input type="text" id="sWhatsappSupplier" class="admin-input" placeholder="+56 9 8765 4321" />
+          </div>
+
+          <h2 class="form-group--full">Pago por transferencia</h2>
+          <div class="form-group">
+            <label for="sBankName">Banco</label>
+            <input type="text" id="sBankName" class="admin-input" />
+          </div>
+          <div class="form-group">
+            <label for="sBankAccountType">Tipo de cuenta</label>
+            <input type="text" id="sBankAccountType" class="admin-input" placeholder="Cuenta Corriente / Vista" />
+          </div>
+          <div class="form-group">
+            <label for="sBankAccountNumber">N° de cuenta</label>
+            <input type="text" id="sBankAccountNumber" class="admin-input" />
+          </div>
+          <div class="form-group">
+            <label for="sBankRut">RUT</label>
+            <input type="text" id="sBankRut" class="admin-input" />
+          </div>
+          <div class="form-group">
+            <label for="sBankHolder">Nombre titular</label>
+            <input type="text" id="sBankHolder" class="admin-input" />
+          </div>
+          <div class="form-group">
+            <label for="sBankEmail">Email para comprobante</label>
+            <input type="email" id="sBankEmail" class="admin-input" />
+          </div>
+
+          <h2 class="form-group--full">Pago por Mercado Pago</h2>
+          <div class="form-group form-group--full">
+            <label for="sMpLink">Link de pago / alias de Mercado Pago</label>
+            <input type="url" id="sMpLink" class="admin-input" placeholder="https://mpago.la/..." />
+          </div>
+
+          <h2 class="form-group--full">Seguridad</h2>
+          <div class="form-group">
+            <label for="sNewPassword">Nueva contraseña del panel</label>
+            <input type="password" id="sNewPassword" class="admin-input" placeholder="Dejar vacío para no cambiar" />
+          </div>
+
+          <div class="form-actions form-group--full">
+            <button type="submit" class="btn-admin btn-admin--primary">Guardar configuración</button>
+          </div>
+        </form>
+
+        <div class="panel content-editor">
+          <h2>Editor visual de la tienda</h2>
+          <p class="content-editor__hint">
+            <strong>Haz clic sobre cualquier texto</strong> de la vista de abajo y escríbelo directamente.
+            Pasa el mouse sobre las <strong>categorías</strong> y <strong>ventajas</strong> para ocultarlas con la <strong>✕</strong>.
+            Nada se publica hasta que aprietes <strong>"Guardar y publicar"</strong>.
+          </p>
+
+          <div class="content-editor__toolbar">
+            <div class="content-editor__tool">
+              <label for="heroHlInput">Palabra destacada del título</label>
+              <input type="text" id="heroHlInput" class="admin-input" placeholder="estilo" />
+            </div>
+            <div class="content-editor__tool content-editor__tool--color">
+              <label for="heroHlColor">Color</label>
+              <input type="color" id="heroHlColor" />
+            </div>
+            <div class="content-editor__tool content-editor__restore" id="restoreWrap" hidden>
+              <label>Secciones ocultas — clic para mostrar</label>
+              <div class="content-editor__chips" id="restoreChips"></div>
+            </div>
+          </div>
+
+          <div class="content-editor__stage">
+            <div class="content-editor__stage-bar">
+              <span class="content-editor__dot"></span><span class="content-editor__dot"></span><span class="content-editor__dot"></span>
+              <span class="content-editor__stage-label">tienda.cl — vista editable</span>
+              <span class="content-editor__dirty" id="contentDirty" hidden>● Cambios sin guardar</span>
+            </div>
+            <iframe id="contentPreviewFrame" src="index.html?editor=1" title="Vista editable de la tienda"></iframe>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn-admin" id="resetContentBtn">Descartar cambios</button>
+            <button type="button" class="btn-admin btn-admin--primary" id="saveContentBtn">Guardar y publicar</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module" src="admin.js"></script>
+</body>
+</html>

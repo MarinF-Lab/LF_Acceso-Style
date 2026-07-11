@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ----------------------------------------------------------------
+       CATÁLOGO Y CONFIGURACIÓN
+       Lectura pública. La escritura queda abierta porque el panel de
+       administración usa una contraseña local (no Firebase Auth).
+       NOTA DE SEGURIDAD (igual que en cliente-1): para blindar la escritura,
+       el admin debería autenticarse con Firebase Auth y usar un custom claim
+       (ej. admin:true), reemplazando "if true" por
+       "if request.auth.token.admin == true".
+       ---------------------------------------------------------------- */
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    /* ----------------------------------------------------------------
+       PEDIDOS (orders)
+       Lectura y escritura abiertas por el mismo motivo que arriba: no hay
+       Firebase Auth todavía, ni para el checkout público ni para el admin.
+       El checkout público SOLO crea (allow create); el admin lee, actualiza
+       estado y elimina desde el panel con contraseña local.
+       NOTA DE SEGURIDAD: en producción real, limitar "create" a la forma
+       esperada del documento (status inicial, campos requeridos) y mover
+       "update"/"delete" detrás de un custom claim de admin.
+       ---------------------------------------------------------------- */
+    match /orders/{orderId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if true;
+    }
+  }
+}

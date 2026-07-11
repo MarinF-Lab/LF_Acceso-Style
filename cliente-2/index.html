@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LF Acceso Style — Ropa urbana & casual</title>
+  <meta name="description" content="LF Acceso Style: streetwear y ropa casual para hombre y unisex. Piezas atemporales en tonos oscuros." />
+  <meta name="theme-color" content="#0b0d12" />
+  <link rel="icon" type="image/png" href="assets/logo-icon-cropped.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ── BARRA ANUNCIO ── -->
+  <div class="announce">
+    <div class="announce__track">
+      <span data-content="announce1">Envío gratis desde $49.990</span><span class="dot">◆</span>
+      <span data-content="announce2">Nueva temporada · Otoño/Invierno</span><span class="dot">◆</span>
+      <span data-content="announce3">Cambios gratis dentro de 30 días</span><span class="dot">◆</span>
+      <span data-content="announce1">Envío gratis desde $49.990</span><span class="dot">◆</span>
+      <span data-content="announce2">Nueva temporada · Otoño/Invierno</span><span class="dot">◆</span>
+      <span data-content="announce3">Cambios gratis dentro de 30 días</span><span class="dot">◆</span>
+    </div>
+  </div>
+
+  <!-- ── NAVBAR ── -->
+  <header class="nav" id="nav">
+    <div class="nav__inner">
+      <button class="nav__burger" id="burger" aria-label="Menú">
+        <span></span><span></span><span></span>
+      </button>
+
+      <a href="#" class="brand" aria-label="Inicio — LF Acceso Style">
+        <img class="brand__icon" src="assets/logo-icon-cropped.png" alt="LF Acceso Style" width="40" height="40" />
+        <span class="brand__word">
+          <span class="brand__name">Acceso Style</span>
+        </span>
+      </a>
+
+      <nav class="nav__links" id="navLinks">
+        <a href="#catalogo" data-nav>Hombre</a>
+        <a href="#catalogo" data-nav>Unisex</a>
+        <a href="#catalogo" data-nav>Novedades</a>
+        <a href="#ofertas" data-nav class="is-sale">Ofertas</a>
+      </nav>
+
+      <div class="nav__actions">
+        <button class="icon-btn" aria-label="Buscar">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M20 20l-3.2-3.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <button class="icon-btn" aria-label="Mi cuenta">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <button class="icon-btn icon-btn--cart" id="cartBtn" aria-label="Carrito">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 7h12l-1 13H7L6 7z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 7a3 3 0 016 0" stroke="currentColor" stroke-width="1.8"/></svg>
+          <span class="cart-badge" id="cartBadge">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── HERO ── -->
+  <section class="hero">
+    <div class="hero__bg" aria-hidden="true"></div>
+    <div class="hero__content">
+      <span class="eyebrow" data-content="heroEyebrow">Colección 2026 · Hombre & Unisex</span>
+      <h1 class="hero__title" data-content-title>Tu acceso al <span class="gold">estilo</span>.</h1>
+      <p class="hero__sub" data-content="heroSub">Streetwear y básicos de calidad en tonos oscuros. Piezas que combinan con todo y no pasan de moda.</p>
+      <div class="hero__cta">
+        <a href="#catalogo" class="btn btn--primary">Comprar colección</a>
+        <a href="#lookbook" class="btn btn--ghost">Ver lookbook</a>
+      </div>
+      <div class="hero__meta">
+        <span><strong>+120</strong> prendas</span>
+        <span class="sep"></span>
+        <span><strong>Envío</strong> a todo Chile</span>
+        <span class="sep"></span>
+        <span><strong>Pago</strong> seguro</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CATEGORÍAS (se renderizan desde Firestore vía script.js) ── -->
+  <section class="cats" id="cats"></section>
+
+  <!-- ── CATÁLOGO ── -->
+  <section class="catalog" id="catalogo">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow" data-content="catalogEyebrow">El catálogo</span>
+        <h2 data-content="catalogHeading">Lo más nuevo</h2>
+      </div>
+      <div class="filters" id="filters">
+        <button class="chip is-active" data-filter="all">Todo</button>
+        <button class="chip" data-filter="polera">Poleras</button>
+        <button class="chip" data-filter="poleron">Polerones</button>
+        <button class="chip" data-filter="pantalon">Pantalones</button>
+        <button class="chip" data-filter="chaqueta">Chaquetas</button>
+      </div>
+    </div>
+
+    <div class="grid" id="grid">
+      <p class="catalog__empty" id="catalogEmpty">Cargando catálogo...</p>
+    </div>
+  </section>
+
+  <!-- ── OFERTA / PROMO ── -->
+  <section class="promo" id="ofertas">
+    <div class="promo__inner">
+      <span class="eyebrow gold" data-content="promoEyebrow">Oferta de temporada</span>
+      <h2 data-content="promoHeading">−25% en tu primera compra</h2>
+      <p data-content="promoText">Suscríbete y recibe el código en tu correo. Válido en toda la colección de temporada.</p>
+      <form class="promo__form" id="newsletter">
+        <input type="email" placeholder="tu@correo.com" required />
+        <button class="btn btn--primary" type="submit">Quiero mi código</button>
+      </form>
+      <span class="promo__note" id="promoNote" hidden>✓ ¡Listo! Revisa tu correo.</span>
+    </div>
+  </section>
+
+  <!-- ── VENTAJAS ── -->
+  <section class="perks">
+    <div class="perk" data-content-visible="perk1Hidden"><span class="perk__ico gold">⚡</span><div><strong data-content="perk1Title">Despacho rápido</strong><span data-content="perk1Sub">24–48 h en RM</span></div></div>
+    <div class="perk" data-content-visible="perk2Hidden"><span class="perk__ico gold">↺</span><div><strong data-content="perk2Title">Cambios fáciles</strong><span data-content="perk2Sub">30 días gratis</span></div></div>
+    <div class="perk" data-content-visible="perk3Hidden"><span class="perk__ico gold">🔒</span><div><strong data-content="perk3Title">Pago seguro</strong><span data-content="perk3Sub">Webpay & tarjetas</span></div></div>
+    <div class="perk" data-content-visible="perk4Hidden"><span class="perk__ico gold">★</span><div><strong data-content="perk4Title">Calidad real</strong><span data-content="perk4Sub">Telas premium</span></div></div>
+  </section>
+
+  <!-- ── FOOTER ── -->
+  <footer class="footer">
+    <div class="footer__top">
+      <div class="footer__brand">
+        <span class="brand brand--lg">
+          <img class="brand__icon" src="assets/logo-icon-cropped.png" alt="LF Acceso Style" width="48" height="48" />
+          <span class="brand__word">
+            <span class="brand__name">Acceso Style</span>
+          </span>
+        </span>
+        <p data-content="footerDesc">Ropa urbana y casual para hombre y unisex. Hecha para durar.</p>
+        <div class="social">
+          <a href="#" aria-label="Instagram">IG</a>
+          <a href="#" aria-label="TikTok">TT</a>
+          <a href="#" aria-label="WhatsApp">WA</a>
+        </div>
+      </div>
+      <div class="footer__col">
+        <h4>Tienda</h4>
+        <a href="#catalogo">Hombre</a>
+        <a href="#catalogo">Unisex</a>
+        <a href="#catalogo">Novedades</a>
+        <a href="#ofertas">Ofertas</a>
+      </div>
+      <div class="footer__col">
+        <h4>Ayuda</h4>
+        <a href="#">Envíos</a>
+        <a href="#">Cambios y devoluciones</a>
+        <a href="#">Guía de tallas</a>
+        <a href="#">Contacto</a>
+      </div>
+      <div class="footer__col">
+        <h4>Legal</h4>
+        <a href="#">Términos</a>
+        <a href="#">Privacidad</a>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <span>© 2026 LF Acceso Style · Todos los derechos reservados</span>
+      <span class="footer__pay">Webpay · Visa · Mastercard</span>
+    </div>
+  </footer>
+
+  <!-- ── CARRITO ── -->
+  <aside class="cart-drawer" id="cartDrawer">
+    <div class="cart-drawer__header">
+      <h3>Tu carrito</h3>
+      <button class="cart-drawer__close" id="cartClose" aria-label="Cerrar carrito">✕</button>
+    </div>
+    <div class="cart-drawer__items" id="cartItems"></div>
+    <div class="cart-drawer__footer" id="cartFooter" style="display:none">
+      <div class="cart-drawer__total"><span>Total</span><span id="cartTotal">$0</span></div>
+      <button class="btn btn--primary btn--full" id="goCheckout">Ir a pagar</button>
+    </div>
+  </aside>
+  <div class="drawer-overlay" id="cartOverlay"></div>
+
+  <!-- ── QUICK VIEW (agregar producto) ── -->
+  <div class="modal-overlay" id="quickViewOverlay">
+    <div class="modal modal--quickview" id="quickViewModal">
+      <button class="modal-close" id="quickViewClose" aria-label="Cerrar">✕</button>
+      <div class="qv__media" id="qvMedia"></div>
+      <div class="qv__body">
+        <h3 id="qvName"></h3>
+        <p class="qv__price" id="qvPrice"></p>
+        <p class="qv__desc" id="qvDesc"></p>
+        <div class="qv__sizes">
+          <span class="qv__label">Talla</span>
+          <div class="qv__size-row" id="qvSizes"></div>
+        </div>
+        <div class="qv__qty">
+          <span class="qv__label">Cantidad</span>
+          <div class="qty-stepper">
+            <button type="button" id="qvQtyMinus">−</button>
+            <span id="qvQty">1</span>
+            <button type="button" id="qvQtyPlus">+</button>
+          </div>
+        </div>
+        <button class="btn btn--primary btn--full" id="qvAddBtn">Agregar al carrito</button>
+        <p class="qv__note" id="qvNote" hidden></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CHECKOUT ── -->
+  <div class="modal-overlay" id="checkoutOverlay">
+    <div class="modal modal--checkout">
+      <button class="modal-close" id="checkoutClose" aria-label="Cerrar">✕</button>
+
+      <div class="checkout-steps">
+        <span class="step active" id="stepDot1">1. Datos</span>
+        <span class="step" id="stepDot2">2. Pago</span>
+        <span class="step" id="stepDot3">3. Listo</span>
+      </div>
+
+      <form id="checkoutForm1" class="checkout-form">
+        <h3>Tus datos</h3>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre</label><input type="text" id="coName" required /></div>
+          <div class="form-group"><label>Teléfono (WhatsApp)</label><input type="tel" id="coPhone" required placeholder="+56 9..." /></div>
+        </div>
+        <div class="form-group"><label>Email (opcional)</label><input type="email" id="coEmail" /></div>
+        <div class="form-group"><label>Dirección de envío</label><input type="text" id="coAddress" required placeholder="Calle, número, comuna" /></div>
+        <button type="submit" class="btn btn--primary btn--full">Continuar a pago</button>
+      </form>
+
+      <form id="checkoutForm2" class="checkout-form" style="display:none">
+        <h3>Método de pago</h3>
+        <div class="pay-methods" id="payMethods">
+          <button type="button" class="pay-method" data-method="transfer">Transferencia bancaria</button>
+          <button type="button" class="pay-method" data-method="mercadopago">Mercado Pago</button>
+        </div>
+        <div class="pay-detail" id="payDetail"></div>
+        <div class="order-summary-mini" id="orderSummaryMini"></div>
+        <div class="checkout-form__actions">
+          <button type="button" class="btn btn--ghost" id="backToStep1">Volver</button>
+          <button type="submit" class="btn btn--primary" id="confirmOrderBtn" disabled>Confirmar pedido</button>
+        </div>
+      </form>
+
+      <div id="checkoutSuccess" class="checkout-success" style="display:none">
+        <div class="checkout-success__icon">✓</div>
+        <h3>¡Pedido recibido!</h3>
+        <p>Tu número de pedido es <strong id="orderNum"></strong></p>
+        <p class="checkout-success__note">Confirma tu pedido enviándonos el resumen por WhatsApp — así lo procesamos de inmediato.</p>
+        <a class="btn btn--primary btn--full" id="waConfirmLink" target="_blank">Confirmar por WhatsApp</a>
+        <button class="btn btn--ghost btn--full" id="continueShopping">Seguir comprando</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>
