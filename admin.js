@@ -180,13 +180,13 @@ function renderProductsTable() {
         : stock < 3 ? `<span class="badge badge--low">${stock} bajo</span>`
         : `<span class="badge badge--ok">${stock}</span>`;
       return `<tr data-id="${p.id}">
-        <td><img class="thumb" src="${p.imageUrl || ''}" onerror="this.style.visibility='hidden'" /></td>
-        <td>${p.name}</td>
-        <td style="text-transform:capitalize">${p.category || '—'}</td>
-        <td>${fmt(p.price)}</td>
-        <td>${stockBadge}</td>
-        <td>${p.tag ? `<span class="badge badge--nuevo">${p.tag === 'top' ? 'Top ventas' : 'Nuevo'}</span>` : '—'}</td>
-        <td><button class="btn-admin btn-admin--danger" data-del="${p.id}">Eliminar</button></td>
+        <td data-label="Imagen"><img class="thumb" src="${p.imageUrl || ''}" onerror="this.style.visibility='hidden'" /></td>
+        <td data-label="Nombre">${p.name}</td>
+        <td data-label="Categoría" style="text-transform:capitalize">${p.category || '—'}</td>
+        <td data-label="Precio">${fmt(p.price)}</td>
+        <td data-label="Stock">${stockBadge}</td>
+        <td data-label="Etiqueta">${p.tag ? `<span class="badge badge--nuevo">${p.tag === 'top' ? 'Top ventas' : 'Nuevo'}</span>` : '—'}</td>
+        <td data-label=""><button class="btn-admin btn-admin--danger" data-del="${p.id}">Eliminar</button></td>
       </tr>`;
     }).join('');
   tbody.innerHTML = rows || `<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:2rem">Sin productos aún. Agrega el primero.</td></tr>`;
@@ -336,16 +336,16 @@ function renderCategoriesTable() {
   const tbody = document.querySelector('#categoriesTable tbody');
   tbody.innerHTML = allCategories.map((c, idx) => `
     <tr data-id="${c.id}">
-      <td>
+      <td data-label="Orden">
         <div class="cat-order-controls">
           <button type="button" class="cat-order-btn" data-move="up" data-id="${c.id}" ${idx === 0 ? 'disabled' : ''}>↑</button>
           <button type="button" class="cat-order-btn" data-move="down" data-id="${c.id}" ${idx === allCategories.length - 1 ? 'disabled' : ''}>↓</button>
         </div>
       </td>
-      <td>${c.name}</td>
-      <td>${c.description || '—'}</td>
-      <td><button type="button" class="btn-admin ${c.hidden ? '' : 'btn-admin--primary'}" data-toggle="${c.id}">${c.hidden ? 'Oculta' : 'Visible'}</button></td>
-      <td>
+      <td data-label="Nombre">${c.name}</td>
+      <td data-label="Descripción">${c.description || '—'}</td>
+      <td data-label="Visible"><button type="button" class="btn-admin ${c.hidden ? '' : 'btn-admin--primary'}" data-toggle="${c.id}">${c.hidden ? 'Oculta' : 'Visible'}</button></td>
+      <td data-label="">
         <button type="button" class="btn-admin" data-edit="${c.id}">Editar</button>
         <button type="button" class="btn-admin btn-admin--danger" data-del="${c.id}">Eliminar</button>
       </td>
@@ -482,12 +482,12 @@ function renderOrdersTable() {
   const tbody = document.querySelector('#ordersTable tbody');
   const rows = allOrders.map(o => `
     <tr data-id="${o.id}" class="${o.id === selectedOrderId ? 'active-row' : ''}">
-      <td>#${o.orderNumber}</td>
-      <td>${new Date(o.createdAt).toLocaleDateString('es-CL')}</td>
-      <td>${o.customerName}</td>
-      <td>${fmt(o.total)}</td>
-      <td>${paymentLabel(o.paymentMethod)}</td>
-      <td><span class="badge badge--${o.status}">${statusLabel(o.status)}</span></td>
+      <td data-label="N°">#${o.orderNumber}</td>
+      <td data-label="Fecha">${new Date(o.createdAt).toLocaleDateString('es-CL')}</td>
+      <td data-label="Cliente">${o.customerName}</td>
+      <td data-label="Total">${fmt(o.total)}</td>
+      <td data-label="Pago">${paymentLabel(o.paymentMethod)}</td>
+      <td data-label="Estado"><span class="badge badge--${o.status}">${statusLabel(o.status)}</span></td>
     </tr>`).join('');
   tbody.innerHTML = rows || `<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:2rem">Aún no hay pedidos.</td></tr>`;
   tbody.querySelectorAll('tr[data-id]').forEach(tr => {
@@ -496,9 +496,9 @@ function renderOrdersTable() {
 
   const dashBody = document.querySelector('#dashboardOrdersTable tbody');
   const recent = allOrders.slice(0, 5).map(o => `
-    <tr><td>#${o.orderNumber}</td><td>${o.customerName}</td><td>${fmt(o.total)}</td>
-      <td>${paymentLabel(o.paymentMethod)}</td>
-      <td><span class="badge badge--${o.status}">${statusLabel(o.status)}</span></td></tr>`).join('');
+    <tr><td data-label="N°">#${o.orderNumber}</td><td data-label="Cliente">${o.customerName}</td><td data-label="Total">${fmt(o.total)}</td>
+      <td data-label="Pago">${paymentLabel(o.paymentMethod)}</td>
+      <td data-label="Estado"><span class="badge badge--${o.status}">${statusLabel(o.status)}</span></td></tr>`).join('');
   dashBody.innerHTML = recent || `<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:1.5rem">Sin pedidos aún.</td></tr>`;
 }
 
