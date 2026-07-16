@@ -502,7 +502,7 @@ document.getElementById('backToStep1').addEventListener('click', () => goToStep(
 function renderPaymentMethods() {
   const wrap = document.getElementById('payMethods');
   const hasTransfer = storeSettings.bankName || storeSettings.bankAccountNumber;
-  const hasMp = storeSettings.mercadoPagoEnabled;
+  const hasMp = storeSettings.mpLink;
   wrap.querySelectorAll('.pay-method').forEach(btn => {
     const method = btn.dataset.method;
     btn.disabled = (method === 'transfer' && !hasTransfer) || (method === 'mercadopago' && !hasMp);
@@ -554,7 +554,7 @@ function renderPaymentDetail(method) {
         : 'Sube una foto o PDF del comprobante para confirmar tu pedido.';
     });
   } else if (method === 'mercadopago') {
-    el.innerHTML = `<p class="pay-note">Al confirmar tu pedido te llevaremos a Mercado Pago en otra pestaña para completar el pago.</p>`;
+    el.innerHTML = `<a class="pay-link-btn" href="${storeSettings.mpLink}" target="_blank" rel="noopener">Pagar con Mercado Pago ↗</a><p class="pay-note">Se abrirá Mercado Pago en otra pestaña. Realiza el pago y luego confirma tu pedido aquí.</p>`;
   }
 }
 
@@ -629,26 +629,10 @@ document.getElementById('checkoutForm2').addEventListener('submit', async (e) =>
     if (insertError) throw insertError;
     await deductStock(cart);
 
-    let mpOpened = false;
-    if (selectedPayMethod === 'mercadopago') {
-      try {
-        const { data: mpData, error: mpError } = await supabase.functions.invoke('create-mp-preference', {
-          body: { items: order.items, externalReference: orderNumber },
-        });
-        if (mpError || !mpData?.url) throw mpError || new Error('Sin URL de pago');
-        window.open(mpData.url, '_blank');
-        mpOpened = true;
-      } catch (mpErr) {
-        console.error('No se pudo generar el link de Mercado Pago:', mpErr);
-      }
-    }
-
     document.getElementById('orderNum').textContent = '#' + orderNumber;
     document.getElementById('checkoutSuccessNote').textContent = selectedPayMethod === 'transfer'
       ? 'Tu pedido y comprobante fueron registrados. Te avisaremos por WhatsApp en cuanto confirmemos tu pago.'
-      : mpOpened
-        ? 'Tu pedido fue registrado. Se abrió Mercado Pago en otra pestaña para completar el pago — te avisaremos por WhatsApp en cuanto lo confirmemos.'
-        : 'Tu pedido fue registrado, pero no pudimos abrir Mercado Pago automáticamente. Contáctanos por WhatsApp para coordinar el pago.';
+      : 'Tu pedido fue registrado. Te avisaremos por WhatsApp en cuanto lo confirmemos.';
 
     cart = [];
     saveCart();

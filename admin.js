@@ -528,18 +528,14 @@ function renderOrderDetail() {
     ? `<a class="receipt-link" href="${o.receiptUrl}" target="_blank" rel="noopener">📎 Ver comprobante de transferencia</a>`
     : (o.paymentMethod === 'transfer' ? `<p class="order-detail__meta">⚠️ Sin comprobante adjunto.</p>` : '');
 
-  // Los pedidos por transferencia o Mercado Pago quedan pendientes de
-  // revisión: el admin debe confirmar el pago (comprobante o su cuenta de
-  // Mercado Pago) y aceptar o rechazar antes de pasar al proveedor.
-  const needsReview = o.status === 'nuevo' && (o.paymentMethod === 'transfer' || o.paymentMethod === 'mercadopago');
+  // Los pedidos por transferencia quedan pendientes de revisión: el admin
+  // debe ver el comprobante y aceptar o rechazar antes de pasar al proveedor.
+  const needsReview = o.status === 'nuevo' && o.paymentMethod === 'transfer';
 
   let actionsHtml;
   if (needsReview) {
-    const reviewNote = o.paymentMethod === 'transfer'
-      ? 'Revisa el comprobante antes de aceptar el pedido.'
-      : `Verifica en tu cuenta de Mercado Pago que el pago con referencia #${o.orderNumber} esté aprobado antes de aceptar.`;
     actionsHtml = `
-      <p class="order-detail__meta">${reviewNote}</p>
+      <p class="order-detail__meta">Revisa el comprobante antes de aceptar el pedido.</p>
       <div class="order-actions">
         <button type="button" class="btn-admin btn-admin--primary btn-full" data-accept>✓ Aceptar pedido</button>
         <button type="button" class="btn-admin btn-admin--danger btn-full" data-reject>✕ Rechazar pedido</button>
@@ -621,7 +617,7 @@ async function loadSettings() {
   document.getElementById('sBankRut').value = storeSettings.bankRut || '';
   document.getElementById('sBankHolder').value = storeSettings.bankHolder || '';
   document.getElementById('sBankEmail').value = storeSettings.bankEmail || '';
-  document.getElementById('sMpEnabled').checked = !!storeSettings.mercadoPagoEnabled;
+  document.getElementById('sMpLink').value = storeSettings.mpLink || '';
 }
 
 document.getElementById('settingsForm').addEventListener('submit', async (e) => {
@@ -635,7 +631,7 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
     bankRut: document.getElementById('sBankRut').value.trim(),
     bankHolder: document.getElementById('sBankHolder').value.trim(),
     bankEmail: document.getElementById('sBankEmail').value.trim(),
-    mercadoPagoEnabled: document.getElementById('sMpEnabled').checked,
+    mpLink: document.getElementById('sMpLink').value.trim(),
   };
   storeSettings = { ...storeSettings, ...data };
   const { error } = await supabase.from('settings').upsert({ id: 'store', data: storeSettings });
