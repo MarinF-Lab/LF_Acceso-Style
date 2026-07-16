@@ -187,14 +187,15 @@ textarea { resize: vertical; }
 .admin-table td { padding: .7rem 1rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
 .admin-table tbody tr:last-child td { border-bottom: none; }
 .admin-table tbody tr:hover { background: var(--surface-2); cursor: pointer; }
+.admin-table tbody tr.active-row { background: rgba(46,105,255,.1); box-shadow: inset 2px 0 0 var(--blue); }
 .admin-table img.thumb { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; background: var(--bg); }
 
 .badge { display: inline-block; padding: .2rem .6rem; border-radius: 999px; font-size: .72rem; font-weight: 700; }
 .badge--nuevo { background: rgba(46,105,255,.18); color: #8fb3ff; }
 .badge--armando { background: rgba(214,178,94,.18); color: var(--gold); }
-.badge--listo { background: rgba(52,199,142,.18); color: var(--success); }
 .badge--en_camino { background: rgba(46,105,255,.3); color: #cddcff; }
 .badge--entregado { background: rgba(255,255,255,.08); color: var(--muted); }
+.badge--rechazado { background: rgba(229,72,77,.18); color: var(--danger); }
 .badge--low { background: rgba(229,72,77,.18); color: var(--danger); }
 .badge--ok { background: rgba(52,199,142,.14); color: var(--success); }
 
@@ -226,6 +227,9 @@ textarea { resize: vertical; }
 
 /* ── Pedidos ── */
 .orders-layout { display: grid; grid-template-columns: 1.3fr 1fr; gap: 1rem; align-items: start; }
+.orders-list { display: flex; flex-direction: column; gap: .8rem; }
+.orders-list__heading { font-family: var(--display); font-size: .95rem; color: var(--muted); margin-top: .4rem; }
+.orders-list__heading:first-child { margin-top: 0; }
 .order-detail { min-height: 200px; position: sticky; top: 1.5rem; }
 .order-detail__empty { color: var(--dim); font-size: .9rem; text-align: center; padding: 2rem 0; }
 .order-detail h3 { font-family: var(--display); font-size: 1.1rem; margin-bottom: .3rem; }
@@ -243,7 +247,6 @@ textarea { resize: vertical; }
 }
 .order-actions { display: flex; flex-direction: column; gap: .5rem; }
 .order-actions .btn-admin { justify-content: flex-start; }
-.order-status-row { display: flex; gap: .4rem; flex-wrap: wrap; margin: .8rem 0; }
 
 /* ── Toast ── */
 .toast {
@@ -307,4 +310,25 @@ textarea { resize: vertical; }
   .order-detail { position: static; }
   .content-editor__restore { margin-left: 0; width: 100%; }
   .content-editor__stage iframe { height: 60vh; }
+}
+
+/* Tablas → tarjetas apiladas en mobile (evita que columnas queden cortadas
+   fuera de pantalla, como pasaba con Pago/Estado en Pedidos). */
+@media (max-width: 700px) {
+  .admin-table thead { display: none; }
+  .admin-table, .admin-table tbody, .admin-table tr, .admin-table td { display: block; width: 100%; }
+  .admin-table tr { padding: .8rem 1rem; border-bottom: 1px solid var(--line); }
+  .admin-table tbody tr:last-child { border-bottom: none; }
+  .admin-table td {
+    display: flex; align-items: center; justify-content: space-between; gap: .8rem;
+    padding: .3rem 0; border-bottom: none; text-align: right;
+  }
+  .admin-table td::before {
+    content: attr(data-label); flex-shrink: 0; text-align: left;
+    font-size: .72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .03em;
+  }
+  .admin-table td:not([data-label]):before, .admin-table td[data-label=""]::before { content: none; }
+  .admin-table td[colspan] { display: block; text-align: center; }
+  .admin-table td[colspan]::before { content: none; }
+  .admin-table img.thumb { margin-left: auto; }
 }

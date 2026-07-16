@@ -40,16 +40,17 @@ const SIZES = ['S', 'M', 'L', 'XL'];
 const ORDER_STATUSES = [
   { id: 'nuevo',      label: 'Nuevo' },
   { id: 'armando',    label: 'Armando' },
-  { id: 'listo',      label: 'Listo' },
   { id: 'en_camino',  label: 'En camino' },
   { id: 'entregado',  label: 'Entregado' },
 ];
 const STATUS_MESSAGES = {
-  armando:   (o) => `Hola ${o.customerName}! 👋 Tu pedido #${o.orderNumber} de LF Acceso Style ya está *armando* 🧵. Te avisamos apenas esté listo.`,
-  listo:     (o) => `Hola ${o.customerName}! ✅ Tu pedido #${o.orderNumber} está *listo*. Coordinamos el envío/retiro a la brevedad.`,
+  armando:   (o) => `Hola ${o.customerName}! 👋 Tu pedido #${o.orderNumber} de LF Acceso Style fue *aceptado* y está *en preparación*. Te avisamos apenas salga en camino.`,
   en_camino: (o) => `Hola ${o.customerName}! 🚚 Tu pedido #${o.orderNumber} va *en camino*. ¡Gracias por tu compra en LF Acceso Style!`,
   entregado: (o) => `Hola ${o.customerName}! 🎉 Tu pedido #${o.orderNumber} fue *entregado*. Gracias por confiar en LF Acceso Style.`,
+  rechazado: (o) => `Hola ${o.customerName}, no pudimos confirmar el pago de tu pedido #${o.orderNumber} — revisa que el comprobante de transferencia esté correcto y respóndenos por este medio para resolverlo.`,
 };
+const EXTRA_STATUS_LABELS = { rechazado: 'Rechazado' };
+function statusLabel(id) { return ORDER_STATUSES.find(s => s.id === id)?.label || EXTRA_STATUS_LABELS[id] || id; }
 
 function withTimeout(promise, ms, label) {
   return Promise.race([
@@ -177,13 +178,13 @@ function renderProductsTable() {
         : stock < 3 ? `<span class="badge badge--low">${stock} bajo</span>`
         : `<span class="badge badge--ok">${stock}</span>`;
       return `<tr data-id="${p.id}">
-        <td><img class="thumb" src="${p.imageUrl || ''}" onerror="this.style.visibility='hidden'" /></td>
-        <td>${p.name}</td>
-        <td style="text-transform:capitalize">${p.category || '—'}</td>
-        <td>${fmt(p.price)}</td>
-        <td>${stockBadge}</td>
-        <td>${p.tag ? `<span class="badge badge--nuevo">${p.tag === 'top' ? 'Top ventas' : 'Nuevo'}</span>` : '—'}</td>
-        <td><button class="btn-admin btn-admin--danger" data-del="${p.id}">Eliminar</button></td>
+        <td data-label="Imagen"><img class="thumb" src="${p.imageUrl || ''}" onerror="this.style.visibility='hidden'" /></td>
+        <td data-label="Nombre">${p.name}</td>
+        <td data-label="Categoría" style="text-transform:capitalize">${p.category || '—'}</td>
+        <td data-label="Precio">${fmt(p.price)}</td>
+        <td data-label="Stock">${stockBadge}</td>
+        <td data-label="Etiqueta">${p.tag ? `<span class="badge badge--nuevo">${p.tag === 'top' ? 'Top ventas' : 'Nuevo'}</span>` : '—'}</td>
+        <td data-label=""><button class="btn-admin btn-admin--danger" data-del="${p.id}">Eliminar</button></td>
       </tr>`;
     }).join('');
   tbody.innerHTML = rows || `<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:2rem">Sin productos aún. Agrega el primero.</td></tr>`;
@@ -333,16 +334,16 @@ function renderCategoriesTable() {
   const tbody = document.querySelector('#categoriesTable tbody');
   tbody.innerHTML = allCategories.map((c, idx) => `
     <tr data-id="${c.id}">
-      <td>
+      <td data-label="Orden">
         <div class="cat-order-controls">
           <button type="button" class="cat-order-btn" data-move="up" data-id="${c.id}" ${idx === 0 ? 'disabled' : ''}>↑</button>
           <button type="button" class="cat-order-btn" data-move="down" data-id="${c.id}" ${idx === allCategories.length - 1 ? 'disabled' : ''}>↓</button>
         </div>
       </td>
-      <td>${c.name}</td>
-      <td>${c.description || '—'}</td>
-      <td><button type="button" class="btn-admin ${c.hidden ? '' : 'btn-admin--primary'}" data-toggle="${c.id}">${c.hidden ? 'Oculta' : 'Visible'}</button></td>
-      <td>
+      <td data-label="Nombre">${c.name}</td>
+      <td data-label="Descripción">${c.description || '—'}</td>
+      <td data-label="Visible"><button type="button" class="btn-admin ${c.hidden ? '' : 'btn-admin--primary'}" data-toggle="${c.id}">${c.hidden ? 'Oculta' : 'Visible'}</button></td>
+      <td data-label="">
         <button type="button" class="btn-admin" data-edit="${c.id}">Editar</button>
         <button type="button" class="btn-admin btn-admin--danger" data-del="${c.id}">Eliminar</button>
       </td>
@@ -475,27 +476,42 @@ function paymentLabel(method) {
   return method === 'mercadopago' ? 'Mercado Pago' : method === 'transfer' ? 'Transferencia' : method || '—';
 }
 
-function renderOrdersTable() {
-  const tbody = document.querySelector('#ordersTable tbody');
-  const rows = allOrders.map(o => `
+function orderRowHtml(o) {
+  return `
     <tr data-id="${o.id}" class="${o.id === selectedOrderId ? 'active-row' : ''}">
-      <td>#${o.orderNumber}</td>
-      <td>${new Date(o.createdAt).toLocaleDateString('es-CL')}</td>
-      <td>${o.customerName}</td>
-      <td>${fmt(o.total)}</td>
-      <td>${paymentLabel(o.paymentMethod)}</td>
-      <td><span class="badge badge--${o.status}">${ORDER_STATUSES.find(s => s.id === o.status)?.label || o.status}</span></td>
-    </tr>`).join('');
-  tbody.innerHTML = rows || `<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:2rem">Aún no hay pedidos.</td></tr>`;
-  tbody.querySelectorAll('tr[data-id]').forEach(tr => {
+      <td data-label="N°">#${o.orderNumber}</td>
+      <td data-label="Fecha">${new Date(o.createdAt).toLocaleDateString('es-CL')}</td>
+      <td data-label="Cliente">${o.customerName}</td>
+      <td data-label="Total">${fmt(o.total)}</td>
+      <td data-label="Pago">${paymentLabel(o.paymentMethod)}</td>
+      <td data-label="Estado"><span class="badge badge--${o.status}">${statusLabel(o.status)}</span></td>
+    </tr>`;
+}
+
+function renderOrdersTable() {
+  // Pedidos más nuevos arriba (allOrders ya viene ordenado así desde la
+  // consulta); se separan en "activos" (por confirmar/en proceso) e
+  // "historial" (entregados o rechazados).
+  const activeOrders = allOrders.filter(o => !['entregado', 'rechazado'].includes(o.status));
+  const historyOrders = allOrders.filter(o => ['entregado', 'rechazado'].includes(o.status));
+
+  const activeBody = document.querySelector('#ordersTableActive tbody');
+  activeBody.innerHTML = activeOrders.map(orderRowHtml).join('')
+    || `<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:2rem">Sin pedidos por confirmar o en proceso.</td></tr>`;
+
+  const historyBody = document.querySelector('#ordersTableHistory tbody');
+  historyBody.innerHTML = historyOrders.map(orderRowHtml).join('')
+    || `<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:2rem">Aún no hay pedidos en el historial.</td></tr>`;
+
+  document.querySelectorAll('#ordersTableActive tr[data-id], #ordersTableHistory tr[data-id]').forEach(tr => {
     tr.addEventListener('click', () => { selectedOrderId = tr.dataset.id; renderOrdersTable(); renderOrderDetail(); });
   });
 
   const dashBody = document.querySelector('#dashboardOrdersTable tbody');
   const recent = allOrders.slice(0, 5).map(o => `
-    <tr><td>#${o.orderNumber}</td><td>${o.customerName}</td><td>${fmt(o.total)}</td>
-      <td>${paymentLabel(o.paymentMethod)}</td>
-      <td><span class="badge badge--${o.status}">${ORDER_STATUSES.find(s => s.id === o.status)?.label || o.status}</span></td></tr>`).join('');
+    <tr><td data-label="N°">#${o.orderNumber}</td><td data-label="Cliente">${o.customerName}</td><td data-label="Total">${fmt(o.total)}</td>
+      <td data-label="Pago">${paymentLabel(o.paymentMethod)}</td>
+      <td data-label="Estado"><span class="badge badge--${o.status}">${statusLabel(o.status)}</span></td></tr>`).join('');
   dashBody.innerHTML = recent || `<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:1.5rem">Sin pedidos aún.</td></tr>`;
 }
 
@@ -513,17 +529,42 @@ function renderOrderDetail() {
       </div>
     </div>`).join('');
 
-  const statusButtons = ORDER_STATUSES.map(s => `
-    <button class="btn-admin ${o.status === s.id ? 'btn-admin--primary' : ''}" data-status="${s.id}">${s.label}</button>
-  `).join('');
-
   const supplierMsg = `Nuevo pedido #${o.orderNumber} para armar:\n` +
     (o.items || []).map(it => `• ${it.name} — Talla ${it.size} — Cant. ${it.qty}${it.imageUrl ? `\n  Imagen: ${it.imageUrl}` : ''}`).join('\n') +
     `\n\nCliente: ${o.customerName}${o.address ? `\nDirección: ${o.address}` : ''}`;
 
   const receiptHtml = o.receiptUrl
     ? `<a class="receipt-link" href="${o.receiptUrl}" target="_blank" rel="noopener">📎 Ver comprobante de transferencia</a>`
-    : (o.paymentMethod === 'transfer' ? `<p class="order-detail__meta">Sin comprobante adjunto.</p>` : '');
+    : (o.paymentMethod === 'transfer' ? `<p class="order-detail__meta">⚠️ Sin comprobante adjunto.</p>` : '');
+
+  // Flujo: nuevo (revisar pago → aceptar/rechazar) → armando (en preparación)
+  // → en_camino → entregado. Un solo botón por paso, sin saltos ni pasos extra.
+  let actionsHtml;
+  if (o.status === 'nuevo') {
+    const reviewNote = o.paymentMethod === 'transfer'
+      ? 'Revisa el comprobante antes de aceptar el pedido.'
+      : `Verifica en tu cuenta de Mercado Pago que el pago de este pedido esté aprobado antes de aceptar.`;
+    actionsHtml = `
+      <p class="order-detail__meta">${reviewNote}</p>
+      <div class="order-actions">
+        <button type="button" class="btn-admin btn-admin--primary btn-full" data-accept>✓ Aceptar pedido</button>
+        <button type="button" class="btn-admin btn-admin--danger btn-full" data-reject>✕ Rechazar pedido</button>
+      </div>`;
+  } else if (o.status === 'armando') {
+    actionsHtml = `
+      <div class="order-actions">
+        <button type="button" class="btn-admin btn-admin--primary btn-full" data-next="en_camino">🚚 Pedido en camino</button>
+      </div>`;
+  } else if (o.status === 'en_camino') {
+    actionsHtml = `
+      <div class="order-actions">
+        <button type="button" class="btn-admin btn-admin--primary btn-full" data-next="entregado">✅ Pedido entregado</button>
+      </div>`;
+  } else if (o.status === 'rechazado') {
+    actionsHtml = `<p class="order-detail__meta">Este pedido fue rechazado.</p>`;
+  } else {
+    actionsHtml = `<p class="order-detail__meta">Pedido entregado — ciclo cerrado.</p>`;
+  }
 
   el.innerHTML = `
     <h3>Pedido #${o.orderNumber}</h3>
@@ -532,16 +573,20 @@ function renderOrderDetail() {
     <div class="order-total"><span>Total</span><span>${fmt(o.total)}</span></div>
     <p class="order-detail__meta">Pago: ${paymentLabel(o.paymentMethod)}${o.address ? ` · Envío a: ${o.address}` : ''}</p>
     ${receiptHtml}
-    <div class="order-actions">
-      <a class="btn-admin btn-admin--primary btn-full" target="_blank" href="${waLink(storeSettings.whatsappSupplier, supplierMsg)}">📦 Enviar specs al proveedor</a>
-    </div>
-    <p class="order-detail__meta" style="margin-top:1rem">Actualizar estado (abre WhatsApp al cliente):</p>
-    <div class="order-status-row">${statusButtons}</div>
+    ${actionsHtml}
   `;
 
-  el.querySelectorAll('[data-status]').forEach(btn => {
-    btn.addEventListener('click', () => updateOrderStatus(o, btn.dataset.status));
+  el.querySelector('[data-accept]')?.addEventListener('click', () => {
+    // Al aceptar: avisa al cliente (pedido aceptado y en preparación) y
+    // manda las specs al proveedor, en un solo paso.
+    updateOrderStatus(o, 'armando');
+    window.open(waLink(storeSettings.whatsappSupplier, supplierMsg), '_blank');
   });
+  el.querySelector('[data-reject]')?.addEventListener('click', () => {
+    if (!confirm('¿Rechazar este pedido? Se avisará al cliente por WhatsApp.')) return;
+    updateOrderStatus(o, 'rechazado');
+  });
+  el.querySelector('[data-next]')?.addEventListener('click', (e) => updateOrderStatus(o, e.target.dataset.next));
 }
 
 async function updateOrderStatus(order, newStatus) {
@@ -556,7 +601,7 @@ async function updateOrderStatus(order, newStatus) {
   if (buildMsg && order.customerPhone) {
     window.open(waLink(order.customerPhone, buildMsg(order)), '_blank');
   }
-  toast(`Pedido #${order.orderNumber} → ${ORDER_STATUSES.find(s => s.id === newStatus)?.label}`);
+  toast(`Pedido #${order.orderNumber} → ${statusLabel(newStatus)}`);
 }
 
 /* ===================================================================
@@ -565,7 +610,7 @@ async function updateOrderStatus(order, newStatus) {
 function renderDashboard() {
   document.getElementById('statProducts').textContent = allProducts.length;
   document.getElementById('statOrdersNew').textContent = allOrders.filter(o => o.status === 'nuevo').length;
-  document.getElementById('statOrdersProgress').textContent = allOrders.filter(o => ['armando', 'listo', 'en_camino'].includes(o.status)).length;
+  document.getElementById('statOrdersProgress').textContent = allOrders.filter(o => ['armando', 'en_camino'].includes(o.status)).length;
   document.getElementById('statLowStock').textContent = allProducts.filter(p => totalStock(p) < 3).length;
 
   const newCount = allOrders.filter(o => o.status === 'nuevo').length;

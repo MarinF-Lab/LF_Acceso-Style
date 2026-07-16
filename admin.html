@@ -241,11 +241,21 @@
       <!-- ===== PEDIDOS ===== -->
       <section class="view" id="view-orders">
         <div class="orders-layout">
-          <div class="table-wrap">
-            <table class="admin-table" id="ordersTable">
-              <thead><tr><th>N°</th><th>Fecha</th><th>Cliente</th><th>Total</th><th>Pago</th><th>Estado</th></tr></thead>
-              <tbody></tbody>
-            </table>
+          <div class="orders-list">
+            <h2 class="orders-list__heading">Por confirmar y en proceso</h2>
+            <div class="table-wrap">
+              <table class="admin-table" id="ordersTableActive">
+                <thead><tr><th>N°</th><th>Fecha</th><th>Cliente</th><th>Total</th><th>Pago</th><th>Estado</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <h2 class="orders-list__heading">Historial</h2>
+            <div class="table-wrap">
+              <table class="admin-table" id="ordersTableHistory">
+                <thead><tr><th>N°</th><th>Fecha</th><th>Cliente</th><th>Total</th><th>Pago</th><th>Estado</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
           </div>
           <div class="panel order-detail" id="orderDetail">
             <p class="order-detail__empty">Selecciona un pedido para ver el detalle.</p>
