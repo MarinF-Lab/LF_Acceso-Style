@@ -774,10 +774,6 @@ svg { width: 22px; height: 22px; }
 }
 .pay-detail .info-box p { margin-bottom: .3rem; }
 .pay-detail .info-box strong { color: var(--text); }
-.pay-detail .pay-link-btn {
-  display: block; text-align: center; background: var(--blue); color: #fff;
-  padding: .8rem; border-radius: 999px; font-weight: 700; text-decoration: none; margin-bottom: .5rem;
-}
 .pay-detail .pay-note { font-size: .78rem; color: var(--dim); text-align: center; }
 .pay-detail .receipt-upload { margin-top: .8rem; }
 .pay-detail .receipt-upload label { display: block; font-size: .8rem; font-weight: 600; color: var(--text); margin-bottom: .4rem; }

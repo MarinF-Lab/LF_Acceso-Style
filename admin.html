@@ -292,10 +292,10 @@
             <input type="email" id="sBankEmail" class="admin-input" />
           </div>
 
-          <h2 class="form-group--full">Pago por Mercado Pago</h2>
-          <div class="form-group form-group--full">
-            <label for="sMpLink">Link de pago / alias de Mercado Pago</label>
-            <input type="url" id="sMpLink" class="admin-input" placeholder="https://mpago.la/..." />
+          <h2 class="form-group--full">Pago por Mercado Pago (Checkout Pro)</h2>
+          <div class="form-group form-group--full checkbox-group">
+            <label><input type="checkbox" id="sMpEnabled" /> Habilitar Mercado Pago como método de pago</label>
+            <p class="field-hint">Genera un link de pago con el monto exacto del carrito (Checkout Pro), no un link fijo por producto. Requiere configurar la Edge Function <code>create-mp-preference</code> con tu Access Token de Mercado Pago Developers — ver <code>docs/mercadopago-setup.md</code>.</p>
           </div>
 
           <h2 class="form-group--full">Seguridad</h2>
