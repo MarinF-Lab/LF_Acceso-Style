@@ -5,15 +5,12 @@ que tú o el cliente tocan "Enviar"). Esta checklist es para cuando quieran
 pasar al envío 100% automático. Ningún paso lo puedo hacer yo — son cuentas
 y verificaciones que solo el dueño del negocio puede completar.
 
-## 1. Crear el proyecto Firebase real
-- [ ] Crear proyecto en https://console.firebase.google.com (gratis).
-- [ ] Habilitar **Firestore Database** y **Storage**.
-- [ ] Copiar las claves del SDK a `firebase-config.js` (reemplazar los
-      valores `REEMPLAZAR_...`).
-- [ ] Subir las reglas: `firebase deploy --only firestore:rules,storage`.
-- [ ] Activar el plan **Blaze** (pago por uso) — requerido para Cloud
-      Functions. Tiene cuota gratuita mensual generosa; solo se cobra si se
-      supera.
+## 1. Crear el proyecto Supabase real
+- [ ] Crear proyecto en https://supabase.com (gratis, sin tarjeta).
+- [ ] Ejecutar `supabase/schema.sql` en el SQL Editor (crea tablas, políticas
+      y el bucket de Storage).
+- [ ] Copiar Project URL y anon public key a `supabase-config.js` (reemplazar
+      los valores `REEMPLAZAR_...`).
 
 ## 2. Meta Business + WhatsApp Business Platform
 - [ ] Crear/verificar una cuenta de **Meta Business Suite**
@@ -39,14 +36,18 @@ y esperar aprobación (típicamente 1–2 días hábiles):
 - [ ] `pedido_en_camino` — al cliente.
 - [ ] `pedido_entregado` — al cliente.
 
-## 4. Configurar y desplegar las Cloud Functions
+## 4. Configurar y desplegar la Edge Function
 ```bash
-cd jumpseller/disenos-origen/cliente-2
-firebase functions:secrets:set WHATSAPP_TOKEN
-firebase functions:secrets:set WHATSAPP_PHONE_NUMBER_ID
-cp functions/.env.example functions/.env   # y completar con datos reales
-firebase deploy --only functions
+cd cliente-2
+supabase functions deploy notify-whatsapp
+supabase secrets set WHATSAPP_TOKEN=... WHATSAPP_PHONE_NUMBER_ID=... \
+  WHATSAPP_SUPPLIER_PHONE=... TEMPLATE_SUPPLIER_NEW_ORDER=... \
+  TEMPLATE_STATUS_ARMANDO=... TEMPLATE_STATUS_LISTO=... \
+  TEMPLATE_STATUS_EN_CAMINO=... TEMPLATE_STATUS_ENTREGADO=...
 ```
+- [ ] En el dashboard de Supabase: **Database → Webhooks** → crear un webhook
+      sobre la tabla `orders` (eventos Insert y Update) que llame a la URL de
+      la función `notify-whatsapp`.
 
 ## 5. Probar
 - [ ] Crear un pedido de prueba en la tienda → confirmar que el proveedor
