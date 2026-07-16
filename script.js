@@ -44,6 +44,28 @@ function waLink(phone, message) {
 }
 
 /* ===================================================================
+   FORMATO DE TELÉFONO (+56 9 xxxx xxxx)
+   =================================================================== */
+function formatClPhone(raw) {
+  let digits = raw.replace(/\D/g, '');
+  if (digits.startsWith('56')) digits = digits.slice(2);
+  if (digits.startsWith('9')) digits = digits.slice(1);
+  digits = digits.slice(0, 8);
+  let out = '+56 9';
+  if (digits.length) out += ' ' + digits.slice(0, 4);
+  if (digits.length > 4) out += ' ' + digits.slice(4, 8);
+  return out;
+}
+const coPhoneInput = document.getElementById('coPhone');
+coPhoneInput.addEventListener('focus', () => { if (!coPhoneInput.value) coPhoneInput.value = '+56 9 '; });
+coPhoneInput.addEventListener('input', (e) => {
+  const pos = e.target.selectionStart;
+  const before = e.target.value.length;
+  e.target.value = formatClPhone(e.target.value);
+  e.target.selectionEnd = pos + (e.target.value.length - before);
+});
+
+/* ===================================================================
    CARGA DE DATOS (Supabase)
    Se agrega un timeout manual para no dejar la UI colgada en "Cargando..."
    si el proyecto no existe (ej. supabase-config.js aún con placeholders).
@@ -384,6 +406,7 @@ function bankBoxHtml() {
   if (s.bankRut) rows.push(`<p><strong>RUT:</strong> ${s.bankRut}</p>`);
   if (s.bankHolder) rows.push(`<p><strong>Nombre:</strong> ${s.bankHolder}</p>`);
   return `<div class="info-box">${rows.join('') || '<p>Datos bancarios no configurados aún.</p>'}</div>
+    <p class="pay-note">Realiza la transferencia, guarda el comprobante y confirma tu pedido. Luego, adjúntalo también al mensaje de WhatsApp para agilizar la confirmación.</p>
     <div class="receipt-upload">
       <label for="receiptFile">Comprobante de transferencia</label>
       <input type="file" id="receiptFile" accept="image/*,.pdf" />
@@ -419,6 +442,17 @@ function renderOrderSummaryMini() {
 
 function orderPrefix() { return 'LF'; }
 
+function buildAddressString() {
+  const region = document.getElementById('coRegion').value.trim();
+  const comuna = document.getElementById('coComuna').value.trim();
+  const street = document.getElementById('coStreet').value.trim();
+  const houseNumber = document.getElementById('coHouseNumber').value.trim();
+  const zip = document.getElementById('coZip').value.trim();
+  let out = `${street} ${houseNumber}, ${comuna}, ${region}`;
+  if (zip) out += ` (CP ${zip})`;
+  return out;
+}
+
 document.getElementById('checkoutForm2').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!selectedPayMethod) return;
@@ -449,7 +483,7 @@ document.getElementById('checkoutForm2').addEventListener('submit', async (e) =>
       customerName: document.getElementById('coName').value.trim(),
       customerPhone: document.getElementById('coPhone').value.trim(),
       customerEmail: document.getElementById('coEmail').value.trim(),
-      address: document.getElementById('coAddress').value.trim(),
+      address: buildAddressString(),
       items: cart.map(i => ({ id: i.id, name: i.name, size: i.size, qty: i.qty, price: i.price, imageUrl: i.imageUrl })),
       total: cartTotal(),
       paymentMethod: selectedPayMethod,
@@ -465,7 +499,8 @@ document.getElementById('checkoutForm2').addEventListener('submit', async (e) =>
     document.getElementById('orderNum').textContent = '#' + orderNumber;
     const summary = `¡Hola! Quiero confirmar mi pedido #${orderNumber}:\n` +
       cart.map(i => `• ${i.name} — Talla ${i.size} × ${i.qty}`).join('\n') +
-      `\n\nTotal: ${fmt(order.total)}\nPago: ${selectedPayMethod === 'transfer' ? 'Transferencia' : 'Mercado Pago'}\nDirección: ${order.address}`;
+      `\n\nTotal: ${fmt(order.total)}\nPago: ${selectedPayMethod === 'transfer' ? 'Transferencia' : 'Mercado Pago'}\nDirección: ${order.address}` +
+      (selectedPayMethod === 'transfer' ? `\n\n📎 Adjunto el comprobante de la transferencia.` : '');
     document.getElementById('waConfirmLink').href = waLink(storeSettings.whatsappStore, summary);
 
     cart = [];
