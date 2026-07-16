@@ -35,6 +35,10 @@ let quickViewSize = null;
 let quickViewQty = 1;
 let selectedPayMethod = null;
 let receiptFile = null;
+let currentUser = null;
+const ORDER_STATUS_LABELS = {
+  nuevo: 'Nuevo', armando: 'Armando', listo: 'Listo', en_camino: 'En camino', entregado: 'Entregado',
+};
 
 function fmt(n) { return '$' + Number(n || 0).toLocaleString('es-CL'); }
 function saveCart() { localStorage.setItem('lf_cart', JSON.stringify(cart)); }
@@ -335,6 +339,129 @@ document.getElementById('cartClose').addEventListener('click', closeCart);
 cartOverlay.addEventListener('click', closeCart);
 
 /* ===================================================================
+   CUENTA DE CLIENTE (login con magic link) Y MIS COMPRAS
+   =================================================================== */
+const accountDrawer = document.getElementById('accountDrawer');
+const accountOverlay = document.getElementById('accountOverlay');
+function openAccount() { renderAccountBody(); accountDrawer.classList.add('open'); accountOverlay.classList.add('open'); }
+function closeAccount() { accountDrawer.classList.remove('open'); accountOverlay.classList.remove('open'); }
+document.getElementById('accountBtn').addEventListener('click', openAccount);
+document.getElementById('accountClose').addEventListener('click', closeAccount);
+accountOverlay.addEventListener('click', closeAccount);
+
+function authBoxHtml(idPrefix) {
+  return `
+    <div class="auth-box">
+      <p class="auth-box__note">Ingresa tu email y te enviamos un link para iniciar sesión, sin contraseña.</p>
+      <div class="auth-box__row">
+        <input type="email" id="${idPrefix}Email" placeholder="tu@correo.com" />
+        <button type="button" class="btn btn--primary" id="${idPrefix}SendBtn">Enviar link</button>
+      </div>
+      <p class="auth-box__status" id="${idPrefix}Status" hidden></p>
+    </div>`;
+}
+
+async function requestMagicLink(email, statusEl, sendBtn) {
+  if (!email) {
+    statusEl.textContent = 'Ingresa tu email.';
+    statusEl.className = 'auth-box__status auth-box__status--error';
+    statusEl.hidden = false;
+    return;
+  }
+  sendBtn.disabled = true;
+  sendBtn.textContent = 'Enviando...';
+  try {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: location.origin + location.pathname },
+    });
+    if (error) throw error;
+    statusEl.textContent = '✓ Listo, revisa tu correo y toca el link para iniciar sesión.';
+    statusEl.className = 'auth-box__status auth-box__status--ok';
+    statusEl.hidden = false;
+  } catch (err) {
+    statusEl.textContent = 'No se pudo enviar el link: ' + err.message;
+    statusEl.className = 'auth-box__status auth-box__status--error';
+    statusEl.hidden = false;
+  } finally {
+    sendBtn.disabled = false;
+    sendBtn.textContent = 'Enviar link';
+  }
+}
+
+function wireAuthBox(idPrefix) {
+  const emailInput = document.getElementById(`${idPrefix}Email`);
+  const sendBtn = document.getElementById(`${idPrefix}SendBtn`);
+  const statusEl = document.getElementById(`${idPrefix}Status`);
+  sendBtn.addEventListener('click', () => requestMagicLink(emailInput.value.trim(), statusEl, sendBtn));
+}
+
+async function loadMyOrders() {
+  const { data, error } = await supabase.from('orders')
+    .select('*').eq('userId', currentUser.id).order('createdAt', { ascending: false });
+  if (error) { console.error('No se pudieron cargar tus compras:', error); return []; }
+  return data;
+}
+
+async function renderAccountBody() {
+  const body = document.getElementById('accountBody');
+  const title = document.getElementById('accountTitle');
+  if (!currentUser) {
+    title.textContent = 'Mi cuenta';
+    body.innerHTML = authBoxHtml('account');
+    wireAuthBox('account');
+    return;
+  }
+  title.textContent = 'Mis compras';
+  body.innerHTML = `
+    <div class="account-user">
+      <span>Conectado como <strong>${currentUser.email}</strong></span>
+      <button type="button" class="account-logout" id="logoutAccountBtn">Cerrar sesión</button>
+    </div>
+    <p class="cart-drawer__empty" id="accountOrdersEmpty" hidden>Aún no tienes compras.</p>
+    <div id="accountOrdersList"></div>
+  `;
+  document.getElementById('logoutAccountBtn').addEventListener('click', () => supabase.auth.signOut());
+
+  const orders = await loadMyOrders();
+  if (!orders.length) {
+    document.getElementById('accountOrdersEmpty').hidden = false;
+    return;
+  }
+  document.getElementById('accountOrdersList').innerHTML = orders.map(o => `
+    <div class="account-order">
+      <div class="account-order__row">
+        <strong>#${o.orderNumber}</strong>
+        <span class="status-pill status-pill--${o.status}">${ORDER_STATUS_LABELS[o.status] || o.status}</span>
+      </div>
+      <span class="account-order__meta">${new Date(o.createdAt).toLocaleDateString('es-CL')} · ${fmt(o.total)}</span>
+    </div>`).join('');
+}
+
+function renderCartAuthGate() {
+  const el = document.getElementById('cartAuth');
+  el.innerHTML = authBoxHtml('cart');
+  el.hidden = false;
+  wireAuthBox('cart');
+}
+
+async function initAuth() {
+  const { data: { session } } = await supabase.auth.getSession();
+  currentUser = session?.user || null;
+  supabase.auth.onAuthStateChange((_event, session) => {
+    currentUser = session?.user || null;
+    if (currentUser) document.getElementById('cartAuth').hidden = true;
+    if (accountDrawer.classList.contains('open')) renderAccountBody();
+  });
+  // Un magic link suele abrirse en otra pestaña: al volver a esta, refrescamos
+  // la sesión por si se inició en la otra.
+  addEventListener('focus', async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    currentUser = session?.user || null;
+  });
+}
+
+/* ===================================================================
    CHECKOUT
    =================================================================== */
 const checkoutOverlay = document.getElementById('checkoutOverlay');
@@ -349,7 +476,10 @@ function closeCheckout() {
   checkoutOverlay.classList.remove('open');
   document.body.style.overflow = '';
 }
-document.getElementById('goCheckout').addEventListener('click', openCheckout);
+document.getElementById('goCheckout').addEventListener('click', () => {
+  if (!currentUser) { renderCartAuthGate(); return; }
+  openCheckout();
+});
 document.getElementById('checkoutClose').addEventListener('click', closeCheckout);
 checkoutOverlay.addEventListener('click', e => { if (e.target === checkoutOverlay) closeCheckout(); });
 
@@ -456,6 +586,12 @@ function buildAddressString() {
 document.getElementById('checkoutForm2').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!selectedPayMethod) return;
+  if (!currentUser) {
+    alert('Tu sesión expiró. Inicia sesión nuevamente para confirmar tu pedido.');
+    closeCheckout();
+    openAccount();
+    return;
+  }
   if (selectedPayMethod === 'transfer' && !receiptFile) {
     const note = document.getElementById('receiptNote');
     note.textContent = 'Debes subir el comprobante de transferencia para continuar.';
@@ -480,6 +616,7 @@ document.getElementById('checkoutForm2').addEventListener('submit', async (e) =>
 
     const order = {
       orderNumber,
+      userId: currentUser.id,
       customerName: document.getElementById('coName').value.trim(),
       customerPhone: document.getElementById('coPhone').value.trim(),
       customerEmail: document.getElementById('coEmail').value.trim(),
@@ -546,6 +683,7 @@ document.getElementById('continueShopping').addEventListener('click', () => {
 const EDITOR_MODE = location.search.includes('editor');
 
 (async function init() {
+  await initAuth();
   // En modo editor (iframe del panel admin) NO cargamos los textos desde
   // Firestore: el panel es la única autoridad y aplica el contenido en vivo,
   // así no pisa lo que el administrador está escribiendo sin guardar.

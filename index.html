@@ -51,7 +51,7 @@
         <button class="icon-btn" aria-label="Buscar">
           <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M20 20l-3.2-3.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
-        <button class="icon-btn" aria-label="Mi cuenta">
+        <button class="icon-btn" id="accountBtn" aria-label="Mi cuenta">
           <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
         <button class="icon-btn icon-btn--cart" id="cartBtn" aria-label="Carrito">
@@ -180,11 +180,22 @@
     </div>
     <div class="cart-drawer__items" id="cartItems"></div>
     <div class="cart-drawer__footer" id="cartFooter" style="display:none">
+      <div class="cart-auth" id="cartAuth" hidden></div>
       <div class="cart-drawer__total"><span>Total</span><span id="cartTotal">$0</span></div>
       <button class="btn btn--primary btn--full" id="goCheckout">Ir a pagar</button>
     </div>
   </aside>
   <div class="drawer-overlay" id="cartOverlay"></div>
+
+  <!-- ── MI CUENTA / MIS COMPRAS ── -->
+  <aside class="cart-drawer" id="accountDrawer">
+    <div class="cart-drawer__header">
+      <h3 id="accountTitle">Mi cuenta</h3>
+      <button class="cart-drawer__close" id="accountClose" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="cart-drawer__items" id="accountBody"></div>
+  </aside>
+  <div class="drawer-overlay" id="accountOverlay"></div>
 
   <!-- ── QUICK VIEW (agregar producto) ── -->
   <div class="modal-overlay" id="quickViewOverlay">

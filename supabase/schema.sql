@@ -63,6 +63,7 @@ on conflict (id) do nothing;
 create table if not exists orders (
   id uuid primary key default gen_random_uuid(),
   "orderNumber" text,
+  "userId" uuid references auth.users(id),
   "customerName" text,
   "customerPhone" text,
   "customerEmail" text,
@@ -78,11 +79,14 @@ create table if not exists orders (
 
 alter table orders enable row level security;
 
--- El checkout público solo necesita crear pedidos; el admin lee/actualiza/
--- elimina desde el panel con contraseña local. Igual que en Firestore, queda
--- abierto por no haber Supabase Auth todavía (ver nota de seguridad arriba).
+-- Lectura/actualización/eliminación: el admin lee/actualiza/elimina desde el
+-- panel con contraseña local (no Supabase Auth), así que quedan abiertas por
+-- el mismo motivo ya documentado arriba (NOTA DE SEGURIDAD: para blindar esto,
+-- el admin debería migrar también a Supabase Auth con un custom claim).
+-- Creación: el checkout ahora exige que el cliente inicie sesión (magic link),
+-- así que solo se puede crear un pedido a nombre de la propia cuenta.
 create policy "orders_select_public" on orders for select using (true);
-create policy "orders_insert_public" on orders for insert with check (true);
+create policy "orders_insert_own" on orders for insert with check (auth.uid() = "userId");
 create policy "orders_update_public" on orders for update using (true) with check (true);
 create policy "orders_delete_public" on orders for delete using (true);
 
