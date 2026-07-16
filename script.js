@@ -1,7 +1,4 @@
-import { db } from './firebase-config.js';
-import {
-  collection, getDocs, getDoc, doc, addDoc, updateDoc
-} from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+import { supabase } from './supabase-config.js';
 import { applyContent } from './content-fields.js';
 import { DEFAULT_CATEGORIES, renderCategoryCards } from './categories.js';
 
@@ -46,10 +43,9 @@ function waLink(phone, message) {
 }
 
 /* ===================================================================
-   CARGA DE DATOS (Firestore)
-   Firestore puede quedar reintentando en vez de fallar rápido si el
-   proyecto no existe (ej. firebase-config.js aún con placeholders). Se
-   agrega un timeout manual para no dejar la UI colgada en "Cargando...".
+   CARGA DE DATOS (Supabase)
+   Se agrega un timeout manual para no dejar la UI colgada en "Cargando..."
+   si el proyecto no existe (ej. supabase-config.js aún con placeholders).
    =================================================================== */
 function withTimeout(promise, ms, label) {
   return Promise.race([
@@ -60,8 +56,9 @@ function withTimeout(promise, ms, label) {
 
 async function loadProducts() {
   try {
-    const snapshot = await withTimeout(getDocs(collection(db, 'products')), 8000, 'products');
-    allProducts = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    const { data, error } = await withTimeout(supabase.from('products').select('*'), 8000, 'products');
+    if (error) throw error;
+    allProducts = data;
   } catch (err) {
     console.error('No se pudo cargar el catálogo:', err);
     allProducts = [];
@@ -71,8 +68,11 @@ async function loadProducts() {
 
 async function loadSettings() {
   try {
-    const snap = await withTimeout(getDoc(doc(db, 'settings', 'store')), 8000, 'settings');
-    storeSettings = snap.exists() ? snap.data() : {};
+    const { data, error } = await withTimeout(
+      supabase.from('settings').select('data').eq('id', 'store').maybeSingle(), 8000, 'settings'
+    );
+    if (error) throw error;
+    storeSettings = data?.data || {};
   } catch (err) {
     console.error('No se pudo cargar la configuración de la tienda:', err);
     storeSettings = {};
@@ -81,8 +81,11 @@ async function loadSettings() {
 
 async function loadPageContent() {
   try {
-    const snap = await withTimeout(getDoc(doc(db, 'settings', 'content')), 8000, 'content');
-    applyContent(document, snap.exists() ? snap.data() : {});
+    const { data, error } = await withTimeout(
+      supabase.from('settings').select('data').eq('id', 'content').maybeSingle(), 8000, 'content'
+    );
+    if (error) throw error;
+    applyContent(document, data?.data || {});
   } catch (err) {
     console.error('No se pudo cargar los textos de la página (se mantienen los de por defecto):', err);
     applyContent(document, {});
@@ -92,9 +95,9 @@ async function loadPageContent() {
 async function loadCategories() {
   const container = document.getElementById('cats');
   try {
-    const snapshot = await withTimeout(getDocs(collection(db, 'categories')), 8000, 'categories');
-    const cats = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    renderCategoryCards(container, cats.length ? cats : DEFAULT_CATEGORIES);
+    const { data, error } = await withTimeout(supabase.from('categories').select('*'), 8000, 'categories');
+    if (error) throw error;
+    renderCategoryCards(container, data.length ? data : DEFAULT_CATEGORIES);
   } catch (err) {
     console.error('No se pudieron cargar las categorías (se usan las por defecto):', err);
     renderCategoryCards(container, DEFAULT_CATEGORIES);
@@ -423,7 +426,8 @@ document.getElementById('checkoutForm2').addEventListener('submit', async (e) =>
       createdAt: Date.now(),
     };
 
-    await addDoc(collection(db, 'orders'), order);
+    const { error: insertError } = await supabase.from('orders').insert(order);
+    if (insertError) throw insertError;
     await deductStock(cart);
 
     document.getElementById('orderNum').textContent = '#' + orderNumber;
@@ -452,10 +456,11 @@ async function deductStock(cartItems) {
     const sizeStock = { ...(p.sizeStock || {}) };
     if (item.size in sizeStock) sizeStock[item.size] = Math.max(0, (sizeStock[item.size] || 0) - item.qty);
     try {
-      await updateDoc(doc(db, 'products', item.id), {
+      const { error } = await supabase.from('products').update({
         sizeStock,
         stock: Object.values(sizeStock).reduce((a, b) => a + b, 0),
-      });
+      }).eq('id', item.id);
+      if (error) throw error;
       p.sizeStock = sizeStock;
     } catch (err) { console.warn('No se pudo descontar stock de', item.id, err); }
   }
@@ -484,7 +489,7 @@ const EDITOR_MODE = location.search.includes('editor');
     renderCatalog();
   } catch (err) {
     if (!EDITOR_MODE) {
-      grid.innerHTML = `<p class="catalog__empty">No se pudo conectar con la tienda. Si eres el administrador: revisa que <code>firebase-config.js</code> tenga las claves reales de tu proyecto Firebase (hoy tiene valores de ejemplo).</p>`;
+      grid.innerHTML = `<p class="catalog__empty">No se pudo conectar con la tienda. Si eres el administrador: revisa que <code>supabase-config.js</code> tenga las claves reales de tu proyecto Supabase (hoy tiene valores de ejemplo).</p>`;
     }
   }
   renderCart();

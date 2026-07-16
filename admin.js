@@ -1,17 +1,11 @@
-import { db, storage } from './firebase-config.js';
-import {
-  collection, getDocs, getDoc, setDoc, updateDoc, deleteDoc, doc, addDoc, query, orderBy
-} from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
-import {
-  ref, uploadBytesResumable, getDownloadURL
-} from "https://www.gstatic.com/firebasejs/12.15.0/firebase-storage.js";
+import { supabase } from './supabase-config.js';
 import { CONTENT_SECTIONS, CONTENT_FIELDS, applyContent, renderHeroTitle, getContent } from './content-fields.js';
 import { DEFAULT_CATEGORIES, sortCategories } from './categories.js';
 
 /* ===================================================================
    SEGURIDAD — contraseña por defecto: lfacceso2026
-   Mismo patrón que cliente-1: hash local en localStorage, sin Firebase
-   Auth. Ver nota de seguridad en firestore.rules.
+   Mismo patrón que cliente-1: hash local en localStorage, sin Supabase
+   Auth. Ver nota de seguridad en supabase/schema.sql.
    =================================================================== */
 const STORAGE_KEYS = { PWD_HASH: 'lf_admin_pwd', SESSION: 'lf_admin_session' };
 const DEFAULT_PWD_HASH = 'a067d8e674a155a1595ba01d98796dc6cc919936c08fe942990d0bfa5a84de33';
@@ -117,7 +111,7 @@ async function showAdmin() {
     renderOrdersTable();
   } catch (err) {
     console.error(err);
-    toast('No se pudo conectar con Firebase. Revisa firebase-config.js (¿tiene tus claves reales?).');
+    toast('No se pudo conectar con Supabase. Revisa supabase-config.js (¿tiene tus claves reales?).');
   }
   initContentEditor();
 }
@@ -161,8 +155,9 @@ document.getElementById('sidebarOverlay').addEventListener('click', () => {
    PRODUCTOS
    =================================================================== */
 async function refreshProducts() {
-  const snapshot = await withTimeout(getDocs(collection(db, 'products')), 8000, 'products');
-  allProducts = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  const { data, error } = await withTimeout(supabase.from('products').select('*'), 8000, 'products');
+  if (error) throw error;
+  allProducts = data;
 }
 
 function totalStock(p) {
@@ -206,7 +201,8 @@ document.getElementById('productSearch').addEventListener('input', renderProduct
 
 function confirmDeleteProduct(id) {
   if (!confirm('¿Eliminar este producto? Esta acción no se puede deshacer.')) return;
-  deleteDoc(doc(db, 'products', id)).then(async () => {
+  supabase.from('products').delete().eq('id', id).then(async ({ error }) => {
+    if (error) { toast('Error al eliminar: ' + error.message); return; }
     await refreshProducts();
     renderProductsTable();
     renderDashboard();
@@ -267,11 +263,11 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
     let imageUrl = document.getElementById('pImageUrl').value.trim();
     const file = document.getElementById('pImageFile').files[0];
     if (file) {
-      const path = `products/${Date.now()}-${file.name}`;
-      const storageRef = ref(storage, path);
-      const task = uploadBytesResumable(storageRef, file);
-      await new Promise((resolve, reject) => task.on('state_changed', null, reject, resolve));
-      imageUrl = await getDownloadURL(storageRef);
+      const path = `${Date.now()}-${file.name}`;
+      const { error: uploadError } = await supabase.storage.from('products').upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: pub } = supabase.storage.from('products').getPublicUrl(path);
+      imageUrl = pub.publicUrl;
     }
 
     const sizeStock = {};
@@ -297,11 +293,13 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
     };
 
     if (editingProductId) {
-      await updateDoc(doc(db, 'products', editingProductId), product);
+      const { error } = await supabase.from('products').update(product).eq('id', editingProductId);
+      if (error) throw error;
       toast('Producto actualizado');
     } else {
       product.createdAt = Date.now();
-      await addDoc(collection(db, 'products'), product);
+      const { error } = await supabase.from('products').insert(product);
+      if (error) throw error;
       toast('Producto creado');
     }
 
@@ -322,9 +320,11 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
    PEDIDOS
    =================================================================== */
 async function refreshOrders() {
-  const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
-  const snapshot = await withTimeout(getDocs(q), 8000, 'orders');
-  allOrders = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  const { data, error } = await withTimeout(
+    supabase.from('orders').select('*').order('createdAt', { ascending: false }), 8000, 'orders'
+  );
+  if (error) throw error;
+  allOrders = data;
 }
 
 function paymentLabel(method) {
@@ -396,7 +396,8 @@ function renderOrderDetail() {
 }
 
 async function updateOrderStatus(order, newStatus) {
-  await updateDoc(doc(db, 'orders', order.id), { status: newStatus, updatedAt: Date.now() });
+  const { error } = await supabase.from('orders').update({ status: newStatus, updatedAt: Date.now() }).eq('id', order.id);
+  if (error) { toast('Error al actualizar: ' + error.message); return; }
   order.status = newStatus;
   renderOrdersTable();
   renderOrderDetail();
@@ -427,8 +428,11 @@ function renderDashboard() {
    CONFIGURACIÓN
    =================================================================== */
 async function loadSettings() {
-  const snap = await withTimeout(getDoc(doc(db, 'settings', 'store')), 8000, 'settings');
-  storeSettings = snap.exists() ? snap.data() : {};
+  const { data, error } = await withTimeout(
+    supabase.from('settings').select('data').eq('id', 'store').maybeSingle(), 8000, 'settings'
+  );
+  if (error) throw error;
+  storeSettings = data?.data || {};
   document.getElementById('sWhatsappStore').value = storeSettings.whatsappStore || '';
   document.getElementById('sWhatsappSupplier').value = storeSettings.whatsappSupplier || '';
   document.getElementById('sBankName').value = storeSettings.bankName || '';
@@ -453,8 +457,9 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
     bankEmail: document.getElementById('sBankEmail').value.trim(),
     mpLink: document.getElementById('sMpLink').value.trim(),
   };
-  await setDoc(doc(db, 'settings', 'store'), data, { merge: true });
   storeSettings = { ...storeSettings, ...data };
+  const { error } = await supabase.from('settings').upsert({ id: 'store', data: storeSettings });
+  if (error) { toast('No se pudo guardar: ' + error.message); return; }
 
   const newPwd = document.getElementById('sNewPassword').value;
   if (newPwd) {
@@ -472,8 +477,11 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
    =================================================================== */
 async function loadPageContent() {
   try {
-    const snap = await withTimeout(getDoc(doc(db, 'settings', 'content')), 8000, 'content');
-    pageContent = snap.exists() ? snap.data() : {};
+    const { data, error } = await withTimeout(
+      supabase.from('settings').select('data').eq('id', 'content').maybeSingle(), 8000, 'content'
+    );
+    if (error) throw error;
+    pageContent = data?.data || {};
   } catch (err) {
     console.error('No se pudieron cargar los textos de la página:', err);
     pageContent = {};
@@ -645,7 +653,8 @@ async function saveContent() {
   btn.disabled = true;
   btn.textContent = 'Guardando...';
   try {
-    await setDoc(doc(db, 'settings', 'content'), pageContent, { merge: true });
+    const { error } = await supabase.from('settings').upsert({ id: 'content', data: pageContent });
+    if (error) throw error;
     savedContent = structuredClone(pageContent);
     markDirty(false);
     toast('Cambios publicados en la tienda');
