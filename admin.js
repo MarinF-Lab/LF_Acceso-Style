@@ -105,10 +105,11 @@ async function showAdmin() {
   loginScreen.style.display = 'none';
   adminApp.style.display = 'flex';
   try {
-    await Promise.all([refreshProducts(), refreshOrders(), loadSettings(), loadPageContent()]);
+    await Promise.all([refreshProducts(), refreshOrders(), refreshCategories(), loadSettings(), loadPageContent()]);
     renderDashboard();
     renderProductsTable();
     renderOrdersTable();
+    renderCategoriesTable();
   } catch (err) {
     console.error(err);
     toast('No se pudo conectar con Supabase. Revisa supabase-config.js (¿tiene tus claves reales?).');
@@ -121,7 +122,7 @@ if (isLoggedIn()) showAdmin();
 /* ===================================================================
    NAVEGACIÓN (sidebar)
    =================================================================== */
-const viewTitles = { dashboard: 'Dashboard', products: 'Productos', add: 'Agregar producto', orders: 'Pedidos', settings: 'Configuración' };
+const viewTitles = { dashboard: 'Dashboard', products: 'Productos', add: 'Agregar producto', categories: 'Categorías', orders: 'Pedidos', settings: 'Configuración' };
 
 document.querySelectorAll('.nav-item').forEach(btn => {
   btn.addEventListener('click', () => showView(btn.dataset.view));
@@ -313,6 +314,149 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
     toast('Error al guardar: ' + err.message);
   } finally {
     btn.disabled = false;
+  }
+});
+
+/* ===================================================================
+   CATEGORÍAS
+   =================================================================== */
+let allCategories = [];
+let editingCategoryId = null;
+
+async function refreshCategories() {
+  const { data, error } = await withTimeout(supabase.from('categories').select('*'), 8000, 'categories');
+  if (error) throw error;
+  allCategories = sortCategories(data.length ? data : DEFAULT_CATEGORIES);
+}
+
+function renderCategoriesTable() {
+  const tbody = document.querySelector('#categoriesTable tbody');
+  tbody.innerHTML = allCategories.map((c, idx) => `
+    <tr data-id="${c.id}">
+      <td>
+        <div class="cat-order-controls">
+          <button type="button" class="cat-order-btn" data-move="up" data-id="${c.id}" ${idx === 0 ? 'disabled' : ''}>↑</button>
+          <button type="button" class="cat-order-btn" data-move="down" data-id="${c.id}" ${idx === allCategories.length - 1 ? 'disabled' : ''}>↓</button>
+        </div>
+      </td>
+      <td>${c.name}</td>
+      <td>${c.description || '—'}</td>
+      <td><button type="button" class="btn-admin ${c.hidden ? '' : 'btn-admin--primary'}" data-toggle="${c.id}">${c.hidden ? 'Oculta' : 'Visible'}</button></td>
+      <td>
+        <button type="button" class="btn-admin" data-edit="${c.id}">Editar</button>
+        <button type="button" class="btn-admin btn-admin--danger" data-del="${c.id}">Eliminar</button>
+      </td>
+    </tr>`).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:2rem">Sin categorías aún. Agrega la primera.</td></tr>`;
+
+  tbody.querySelectorAll('tr[data-id]').forEach(tr => {
+    tr.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      editCategory(tr.dataset.id);
+    });
+  });
+  tbody.querySelectorAll('[data-move]').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); moveCategory(btn.dataset.id, btn.dataset.move); });
+  });
+  tbody.querySelectorAll('[data-toggle]').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); toggleCategoryHidden(btn.dataset.toggle); });
+  });
+  tbody.querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); editCategory(btn.dataset.edit); });
+  });
+  tbody.querySelectorAll('[data-del]').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); confirmDeleteCategory(btn.dataset.del); });
+  });
+}
+
+async function moveCategory(id, direction) {
+  const idx = allCategories.findIndex(c => c.id === id);
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (idx === -1 || swapIdx < 0 || swapIdx >= allCategories.length) return;
+  const a = allCategories[idx];
+  const b = allCategories[swapIdx];
+  const { error } = await supabase.from('categories').upsert([
+    { ...a, order: b.order },
+    { ...b, order: a.order },
+  ]);
+  if (error) { toast('Error al reordenar: ' + error.message); return; }
+  await refreshCategories();
+  renderCategoriesTable();
+}
+
+async function toggleCategoryHidden(id) {
+  const c = allCategories.find(x => x.id === id);
+  if (!c) return;
+  const { error } = await supabase.from('categories').update({ hidden: !c.hidden }).eq('id', id);
+  if (error) { toast('Error: ' + error.message); return; }
+  await refreshCategories();
+  renderCategoriesTable();
+}
+
+function editCategory(id) {
+  const c = allCategories.find(x => x.id === id);
+  if (!c) return;
+  editingCategoryId = id;
+  document.getElementById('categoryId').value = c.id;
+  document.getElementById('catName').value = c.name || '';
+  document.getElementById('catDesc').value = c.description || '';
+  document.getElementById('categoryFormTitle').textContent = 'Editar categoría';
+  document.getElementById('categoryForm').hidden = false;
+}
+
+function confirmDeleteCategory(id) {
+  if (!confirm('¿Eliminar esta categoría? Esta acción no se puede deshacer.')) return;
+  supabase.from('categories').delete().eq('id', id).then(async ({ error }) => {
+    if (error) { toast('Error al eliminar: ' + error.message); return; }
+    await refreshCategories();
+    renderCategoriesTable();
+    toast('Categoría eliminada');
+  });
+}
+
+function slugifyCategoryName(str) {
+  return str.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+document.getElementById('addCategoryBtn').addEventListener('click', () => {
+  editingCategoryId = null;
+  document.getElementById('categoryId').value = '';
+  document.getElementById('catName').value = '';
+  document.getElementById('catDesc').value = '';
+  document.getElementById('categoryFormTitle').textContent = 'Nueva categoría';
+  document.getElementById('categoryForm').hidden = false;
+});
+
+document.getElementById('cancelCategoryForm').addEventListener('click', () => {
+  document.getElementById('categoryForm').hidden = true;
+});
+
+document.getElementById('saveCategoryBtn').addEventListener('click', async () => {
+  const name = document.getElementById('catName').value.trim();
+  const description = document.getElementById('catDesc').value.trim();
+  if (!name) { toast('El nombre de la categoría es obligatorio'); return; }
+
+  try {
+    if (editingCategoryId) {
+      const { error } = await supabase.from('categories').update({ name, description }).eq('id', editingCategoryId);
+      if (error) throw error;
+      toast('Categoría actualizada');
+    } else {
+      let id = slugifyCategoryName(name) || `cat-${Date.now()}`;
+      if (allCategories.some(c => c.id === id)) id = `${id}-${Date.now()}`;
+      const order = allCategories.length ? Math.max(...allCategories.map(c => c.order ?? 0)) + 1 : 0;
+      const { error } = await supabase.from('categories').insert({ id, name, description, order, hidden: false });
+      if (error) throw error;
+      toast('Categoría creada');
+    }
+    document.getElementById('categoryForm').hidden = true;
+    await refreshCategories();
+    renderCategoriesTable();
+  } catch (err) {
+    console.error(err);
+    toast('Error al guardar: ' + err.message);
   }
 });
 
