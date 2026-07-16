@@ -38,7 +38,6 @@ y esperar aprobación (típicamente 1–2 días hábiles):
 
 ## 4. Configurar y desplegar la Edge Function
 ```bash
-cd cliente-2
 supabase functions deploy notify-whatsapp
 supabase secrets set WHATSAPP_TOKEN=... WHATSAPP_PHONE_NUMBER_ID=... \
   WHATSAPP_SUPPLIER_PHONE=... TEMPLATE_SUPPLIER_NEW_ORDER=... \
