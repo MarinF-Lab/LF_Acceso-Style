@@ -193,7 +193,6 @@ textarea { resize: vertical; }
 .badge { display: inline-block; padding: .2rem .6rem; border-radius: 999px; font-size: .72rem; font-weight: 700; }
 .badge--nuevo { background: rgba(46,105,255,.18); color: #8fb3ff; }
 .badge--armando { background: rgba(214,178,94,.18); color: var(--gold); }
-.badge--listo { background: rgba(52,199,142,.18); color: var(--success); }
 .badge--en_camino { background: rgba(46,105,255,.3); color: #cddcff; }
 .badge--entregado { background: rgba(255,255,255,.08); color: var(--muted); }
 .badge--rechazado { background: rgba(229,72,77,.18); color: var(--danger); }
@@ -228,6 +227,9 @@ textarea { resize: vertical; }
 
 /* ── Pedidos ── */
 .orders-layout { display: grid; grid-template-columns: 1.3fr 1fr; gap: 1rem; align-items: start; }
+.orders-list { display: flex; flex-direction: column; gap: .8rem; }
+.orders-list__heading { font-family: var(--display); font-size: .95rem; color: var(--muted); margin-top: .4rem; }
+.orders-list__heading:first-child { margin-top: 0; }
 .order-detail { min-height: 200px; position: sticky; top: 1.5rem; }
 .order-detail__empty { color: var(--dim); font-size: .9rem; text-align: center; padding: 2rem 0; }
 .order-detail h3 { font-family: var(--display); font-size: 1.1rem; margin-bottom: .3rem; }
@@ -245,7 +247,6 @@ textarea { resize: vertical; }
 }
 .order-actions { display: flex; flex-direction: column; gap: .5rem; }
 .order-actions .btn-admin { justify-content: flex-start; }
-.order-status-row { display: flex; gap: .4rem; flex-wrap: wrap; margin: .8rem 0; }
 
 /* ── Toast ── */
 .toast {

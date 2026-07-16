@@ -37,7 +37,7 @@ let selectedPayMethod = null;
 let receiptFile = null;
 let currentUser = null;
 const ORDER_STATUS_LABELS = {
-  nuevo: 'Nuevo', armando: 'Armando', listo: 'Listo', en_camino: 'En camino', entregado: 'Entregado', rechazado: 'Rechazado',
+  nuevo: 'Nuevo', armando: 'Armando', en_camino: 'En camino', entregado: 'Entregado', rechazado: 'Rechazado',
 };
 
 function fmt(n) { return '$' + Number(n || 0).toLocaleString('es-CL'); }
