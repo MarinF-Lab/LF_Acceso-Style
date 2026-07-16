@@ -20,6 +20,22 @@ plan Blaze / tarjeta de crédito) por Supabase (plan gratis, sin tarjeta).
    defecto) deberías poder crear productos con imagen, ver pedidos y editar
    la configuración/textos de la tienda.
 
+## Login de clientes (magic link) — paso obligatorio
+
+El checkout ahora exige que el cliente inicie sesión con su email antes de
+pagar (link mágico, sin contraseña). Para que el link del correo redirija de
+vuelta a tu sitio (y no a `localhost`):
+
+1. En el dashboard de Supabase: **Authentication → URL Configuration**.
+2. En **Site URL**, poné la URL real de tu sitio (ej. `https://tuusuario.github.io/turepo/`).
+3. En **Redirect URLs**, agregá esa misma URL (y `http://localhost:8000/` o el
+   puerto que uses si vas a probar en local).
+4. Sin este paso, el botón "Enviar link" funciona pero el correo puede
+   redirigir a una URL que no existe.
+
+No hace falta configurar nada más: el proveedor de email de Supabase viene
+activado por defecto y alcanza para el volumen de una tienda chica.
+
 ## Envío automático de WhatsApp (opcional, Fase B)
 
 No es necesario para que la tienda funcione — hoy usa enlaces `wa.me`

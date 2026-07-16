@@ -199,8 +199,18 @@ textarea { resize: vertical; }
 .badge--ok { background: rgba(52,199,142,.14); color: var(--success); }
 
 /* ── Toolbar / forms ── */
-.view-toolbar { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.view-toolbar { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
 .view-toolbar .admin-input { max-width: 320px; }
+.view-intro { color: var(--muted); font-size: .85rem; flex: 1; min-width: 200px; }
+
+.cat-order-controls { display: flex; gap: .3rem; }
+.cat-order-btn {
+  width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line);
+  background: var(--surface-2); color: var(--text); cursor: pointer; font-size: .8rem; line-height: 1;
+}
+.cat-order-btn:hover:not(:disabled) { border-color: var(--gold-soft); }
+.cat-order-btn:disabled { opacity: .3; cursor: default; }
+.category-form { margin-top: 1rem; }
 
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem 1.2rem; }
 .form-group--full { grid-column: 1 / -1; }
@@ -226,6 +236,11 @@ textarea { resize: vertical; }
 .order-item__info strong { display: block; }
 .order-item__info span { color: var(--muted); font-size: .78rem; }
 .order-total { display: flex; justify-content: space-between; font-family: var(--display); font-weight: 800; margin: 1rem 0; font-size: 1.05rem; }
+.receipt-link {
+  display: block; text-align: center; padding: .6rem; margin-bottom: 1rem;
+  border: 1px solid var(--line); border-radius: 8px; color: var(--blue);
+  font-size: .85rem; font-weight: 600; text-decoration: none;
+}
 .order-actions { display: flex; flex-direction: column; gap: .5rem; }
 .order-actions .btn-admin { justify-content: flex-start; }
 .order-status-row { display: flex; gap: .4rem; flex-wrap: wrap; margin: .8rem 0; }
