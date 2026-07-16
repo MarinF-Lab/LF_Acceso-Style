@@ -377,12 +377,17 @@ function renderOrderDetail() {
     (o.items || []).map(it => `• ${it.name} — Talla ${it.size} — Cant. ${it.qty}${it.imageUrl ? `\n  Imagen: ${it.imageUrl}` : ''}`).join('\n') +
     `\n\nCliente: ${o.customerName}${o.address ? `\nDirección: ${o.address}` : ''}`;
 
+  const receiptHtml = o.receiptUrl
+    ? `<a class="receipt-link" href="${o.receiptUrl}" target="_blank" rel="noopener">📎 Ver comprobante de transferencia</a>`
+    : (o.paymentMethod === 'transfer' ? `<p class="order-detail__meta">Sin comprobante adjunto.</p>` : '');
+
   el.innerHTML = `
     <h3>Pedido #${o.orderNumber}</h3>
     <p class="order-detail__meta">${o.customerName} · ${o.customerPhone || 'sin teléfono'} · ${new Date(o.createdAt).toLocaleString('es-CL')}</p>
     ${itemsHtml}
     <div class="order-total"><span>Total</span><span>${fmt(o.total)}</span></div>
     <p class="order-detail__meta">Pago: ${paymentLabel(o.paymentMethod)}${o.address ? ` · Envío a: ${o.address}` : ''}</p>
+    ${receiptHtml}
     <div class="order-actions">
       <a class="btn-admin btn-admin--primary btn-full" target="_blank" href="${waLink(storeSettings.whatsappSupplier, supplierMsg)}">📦 Enviar specs al proveedor</a>
     </div>

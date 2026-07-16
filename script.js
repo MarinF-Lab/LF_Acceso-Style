@@ -34,6 +34,7 @@ let quickViewProduct = null;
 let quickViewSize = null;
 let quickViewQty = 1;
 let selectedPayMethod = null;
+let receiptFile = null;
 
 function fmt(n) { return '$' + Number(n || 0).toLocaleString('es-CL'); }
 function saveCart() { localStorage.setItem('lf_cart', JSON.stringify(cart)); }
@@ -361,6 +362,7 @@ function renderPaymentMethods() {
   });
   document.getElementById('payDetail').innerHTML = '';
   selectedPayMethod = null;
+  receiptFile = null;
   document.getElementById('confirmOrderBtn').disabled = true;
 }
 
@@ -381,14 +383,27 @@ function bankBoxHtml() {
   if (s.bankAccountType || s.bankAccountNumber) rows.push(`<p><strong>${s.bankAccountType || 'Cuenta'}:</strong> ${s.bankAccountNumber || ''}</p>`);
   if (s.bankRut) rows.push(`<p><strong>RUT:</strong> ${s.bankRut}</p>`);
   if (s.bankHolder) rows.push(`<p><strong>Nombre:</strong> ${s.bankHolder}</p>`);
-  if (s.bankEmail) rows.push(`<p class="pay-note">Envía el comprobante a ${s.bankEmail} o por WhatsApp con tu número de pedido.</p>`);
-  return `<div class="info-box">${rows.join('') || '<p>Datos bancarios no configurados aún.</p>'}</div>`;
+  return `<div class="info-box">${rows.join('') || '<p>Datos bancarios no configurados aún.</p>'}</div>
+    <div class="receipt-upload">
+      <label for="receiptFile">Comprobante de transferencia</label>
+      <input type="file" id="receiptFile" accept="image/*,.pdf" />
+      <p class="pay-note" id="receiptNote">Sube una foto o PDF del comprobante para confirmar tu pedido.</p>
+    </div>`;
 }
 
 function renderPaymentDetail(method) {
   const el = document.getElementById('payDetail');
+  receiptFile = null;
   if (method === 'transfer') {
     el.innerHTML = bankBoxHtml();
+    document.getElementById('receiptFile').addEventListener('change', (e) => {
+      receiptFile = e.target.files[0] || null;
+      const note = document.getElementById('receiptNote');
+      note.classList.remove('pay-note--error');
+      note.textContent = receiptFile
+        ? `Archivo seleccionado: ${receiptFile.name}`
+        : 'Sube una foto o PDF del comprobante para confirmar tu pedido.';
+    });
   } else if (method === 'mercadopago') {
     el.innerHTML = `<a class="pay-link-btn" href="${storeSettings.mpLink}" target="_blank" rel="noopener">Pagar con Mercado Pago ↗</a><p class="pay-note">Se abrirá Mercado Pago en otra pestaña. Realiza el pago y luego confirma tu pedido aquí.</p>`;
   }
@@ -407,12 +422,28 @@ function orderPrefix() { return 'LF'; }
 document.getElementById('checkoutForm2').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!selectedPayMethod) return;
+  if (selectedPayMethod === 'transfer' && !receiptFile) {
+    const note = document.getElementById('receiptNote');
+    note.textContent = 'Debes subir el comprobante de transferencia para continuar.';
+    note.classList.add('pay-note--error');
+    return;
+  }
   const btn = document.getElementById('confirmOrderBtn');
   btn.disabled = true;
   btn.textContent = 'Enviando...';
 
   try {
     const orderNumber = orderPrefix() + '-' + String(Date.now()).slice(-6);
+
+    let receiptUrl = '';
+    if (selectedPayMethod === 'transfer' && receiptFile) {
+      const path = `${orderNumber}-${Date.now()}-${receiptFile.name}`;
+      const { error: uploadError } = await supabase.storage.from('receipts').upload(path, receiptFile);
+      if (uploadError) throw uploadError;
+      const { data: pub } = supabase.storage.from('receipts').getPublicUrl(path);
+      receiptUrl = pub.publicUrl;
+    }
+
     const order = {
       orderNumber,
       customerName: document.getElementById('coName').value.trim(),
@@ -422,6 +453,7 @@ document.getElementById('checkoutForm2').addEventListener('submit', async (e) =>
       items: cart.map(i => ({ id: i.id, name: i.name, size: i.size, qty: i.qty, price: i.price, imageUrl: i.imageUrl })),
       total: cartTotal(),
       paymentMethod: selectedPayMethod,
+      receiptUrl,
       status: 'nuevo',
       createdAt: Date.now(),
     };

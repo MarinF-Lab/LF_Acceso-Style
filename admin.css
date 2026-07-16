@@ -226,6 +226,11 @@ textarea { resize: vertical; }
 .order-item__info strong { display: block; }
 .order-item__info span { color: var(--muted); font-size: .78rem; }
 .order-total { display: flex; justify-content: space-between; font-family: var(--display); font-weight: 800; margin: 1rem 0; font-size: 1.05rem; }
+.receipt-link {
+  display: block; text-align: center; padding: .6rem; margin-bottom: 1rem;
+  border: 1px solid var(--line); border-radius: 8px; color: var(--blue);
+  font-size: .85rem; font-weight: 600; text-decoration: none;
+}
 .order-actions { display: flex; flex-direction: column; gap: .5rem; }
 .order-actions .btn-admin { justify-content: flex-start; }
 .order-status-row { display: flex; gap: .4rem; flex-wrap: wrap; margin: .8rem 0; }

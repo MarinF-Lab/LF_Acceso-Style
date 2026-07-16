@@ -70,6 +70,7 @@ create table if not exists orders (
   items jsonb not null default '[]'::jsonb,
   total numeric not null default 0,
   "paymentMethod" text,
+  "receiptUrl" text default '',
   status text not null default 'nuevo',
   "createdAt" bigint,
   "updatedAt" bigint
@@ -128,3 +129,21 @@ create policy "products_bucket_update_public"
 create policy "products_bucket_delete_public"
   on storage.objects for delete
   using (bucket_id = 'products');
+
+-- ----------------------------------------------------------------------------
+-- STORAGE — bucket para comprobantes de transferencia
+-- ----------------------------------------------------------------------------
+insert into storage.buckets (id, name, public)
+values ('receipts', 'receipts', true)
+on conflict (id) do nothing;
+
+-- Lectura pública (el admin necesita poder ver el comprobante desde el link
+-- guardado en el pedido), escritura abierta (el cliente sube sin autenticarse
+-- desde el checkout — mismo trade-off documentado arriba).
+create policy "receipts_bucket_read_public"
+  on storage.objects for select
+  using (bucket_id = 'receipts');
+
+create policy "receipts_bucket_write_public"
+  on storage.objects for insert
+  with check (bucket_id = 'receipts');
