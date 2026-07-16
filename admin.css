@@ -195,6 +195,7 @@ textarea { resize: vertical; }
 .badge--listo { background: rgba(52,199,142,.18); color: var(--success); }
 .badge--en_camino { background: rgba(46,105,255,.3); color: #cddcff; }
 .badge--entregado { background: rgba(255,255,255,.08); color: var(--muted); }
+.badge--rechazado { background: rgba(229,72,77,.18); color: var(--danger); }
 .badge--low { background: rgba(229,72,77,.18); color: var(--danger); }
 .badge--ok { background: rgba(52,199,142,.14); color: var(--success); }
 

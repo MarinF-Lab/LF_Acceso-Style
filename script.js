@@ -37,15 +37,11 @@ let selectedPayMethod = null;
 let receiptFile = null;
 let currentUser = null;
 const ORDER_STATUS_LABELS = {
-  nuevo: 'Nuevo', armando: 'Armando', listo: 'Listo', en_camino: 'En camino', entregado: 'Entregado',
+  nuevo: 'Nuevo', armando: 'Armando', listo: 'Listo', en_camino: 'En camino', entregado: 'Entregado', rechazado: 'Rechazado',
 };
 
 function fmt(n) { return '$' + Number(n || 0).toLocaleString('es-CL'); }
 function saveCart() { localStorage.setItem('lf_cart', JSON.stringify(cart)); }
-function waLink(phone, message) {
-  const digits = (phone || '').replace(/\D/g, '');
-  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
-}
 
 /* ===================================================================
    FORMATO DE TELÉFONO (+56 9 xxxx xxxx)
@@ -536,7 +532,7 @@ function bankBoxHtml() {
   if (s.bankRut) rows.push(`<p><strong>RUT:</strong> ${s.bankRut}</p>`);
   if (s.bankHolder) rows.push(`<p><strong>Nombre:</strong> ${s.bankHolder}</p>`);
   return `<div class="info-box">${rows.join('') || '<p>Datos bancarios no configurados aún.</p>'}</div>
-    <p class="pay-note">Realiza la transferencia, guarda el comprobante y confirma tu pedido. Luego, adjúntalo también al mensaje de WhatsApp para agilizar la confirmación.</p>
+    <p class="pay-note">Realiza la transferencia y guarda el comprobante, adjúntalo para poder confirmar tu pedido.</p>
     <div class="receipt-upload">
       <label for="receiptFile">Comprobante de transferencia</label>
       <input type="file" id="receiptFile" accept="image/*,.pdf" />
@@ -634,11 +630,9 @@ document.getElementById('checkoutForm2').addEventListener('submit', async (e) =>
     await deductStock(cart);
 
     document.getElementById('orderNum').textContent = '#' + orderNumber;
-    const summary = `¡Hola! Quiero confirmar mi pedido #${orderNumber}:\n` +
-      cart.map(i => `• ${i.name} — Talla ${i.size} × ${i.qty}`).join('\n') +
-      `\n\nTotal: ${fmt(order.total)}\nPago: ${selectedPayMethod === 'transfer' ? 'Transferencia' : 'Mercado Pago'}\nDirección: ${order.address}` +
-      (selectedPayMethod === 'transfer' ? `\n\n📎 Adjunto el comprobante de la transferencia.` : '');
-    document.getElementById('waConfirmLink').href = waLink(storeSettings.whatsappStore, summary);
+    document.getElementById('checkoutSuccessNote').textContent = selectedPayMethod === 'transfer'
+      ? 'Tu pedido y comprobante fueron registrados. Te avisaremos por WhatsApp en cuanto confirmemos tu pago.'
+      : 'Tu pedido fue registrado. Te avisaremos por WhatsApp en cuanto lo confirmemos.';
 
     cart = [];
     saveCart();

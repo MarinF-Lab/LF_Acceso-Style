@@ -49,7 +49,10 @@ const STATUS_MESSAGES = {
   listo:     (o) => `Hola ${o.customerName}! ✅ Tu pedido #${o.orderNumber} está *listo*. Coordinamos el envío/retiro a la brevedad.`,
   en_camino: (o) => `Hola ${o.customerName}! 🚚 Tu pedido #${o.orderNumber} va *en camino*. ¡Gracias por tu compra en LF Acceso Style!`,
   entregado: (o) => `Hola ${o.customerName}! 🎉 Tu pedido #${o.orderNumber} fue *entregado*. Gracias por confiar en LF Acceso Style.`,
+  rechazado: (o) => `Hola ${o.customerName}, no pudimos confirmar el pago de tu pedido #${o.orderNumber} — revisa que el comprobante de transferencia esté correcto y respóndenos por este medio para resolverlo.`,
 };
+const EXTRA_STATUS_LABELS = { rechazado: 'Rechazado' };
+function statusLabel(id) { return ORDER_STATUSES.find(s => s.id === id)?.label || EXTRA_STATUS_LABELS[id] || id; }
 
 function withTimeout(promise, ms, label) {
   return Promise.race([
@@ -484,7 +487,7 @@ function renderOrdersTable() {
       <td>${o.customerName}</td>
       <td>${fmt(o.total)}</td>
       <td>${paymentLabel(o.paymentMethod)}</td>
-      <td><span class="badge badge--${o.status}">${ORDER_STATUSES.find(s => s.id === o.status)?.label || o.status}</span></td>
+      <td><span class="badge badge--${o.status}">${statusLabel(o.status)}</span></td>
     </tr>`).join('');
   tbody.innerHTML = rows || `<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:2rem">Aún no hay pedidos.</td></tr>`;
   tbody.querySelectorAll('tr[data-id]').forEach(tr => {
@@ -495,7 +498,7 @@ function renderOrdersTable() {
   const recent = allOrders.slice(0, 5).map(o => `
     <tr><td>#${o.orderNumber}</td><td>${o.customerName}</td><td>${fmt(o.total)}</td>
       <td>${paymentLabel(o.paymentMethod)}</td>
-      <td><span class="badge badge--${o.status}">${ORDER_STATUSES.find(s => s.id === o.status)?.label || o.status}</span></td></tr>`).join('');
+      <td><span class="badge badge--${o.status}">${statusLabel(o.status)}</span></td></tr>`).join('');
   dashBody.innerHTML = recent || `<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:1.5rem">Sin pedidos aún.</td></tr>`;
 }
 
@@ -523,7 +526,30 @@ function renderOrderDetail() {
 
   const receiptHtml = o.receiptUrl
     ? `<a class="receipt-link" href="${o.receiptUrl}" target="_blank" rel="noopener">📎 Ver comprobante de transferencia</a>`
-    : (o.paymentMethod === 'transfer' ? `<p class="order-detail__meta">Sin comprobante adjunto.</p>` : '');
+    : (o.paymentMethod === 'transfer' ? `<p class="order-detail__meta">⚠️ Sin comprobante adjunto.</p>` : '');
+
+  // Los pedidos por transferencia quedan pendientes de revisión: el admin
+  // debe ver el comprobante y aceptar o rechazar antes de pasar al proveedor.
+  const needsReview = o.status === 'nuevo' && o.paymentMethod === 'transfer';
+
+  let actionsHtml;
+  if (needsReview) {
+    actionsHtml = `
+      <p class="order-detail__meta">Revisa el comprobante antes de aceptar el pedido.</p>
+      <div class="order-actions">
+        <button type="button" class="btn-admin btn-admin--primary btn-full" data-accept>✓ Aceptar pedido</button>
+        <button type="button" class="btn-admin btn-admin--danger btn-full" data-reject>✕ Rechazar pedido</button>
+      </div>`;
+  } else if (o.status === 'rechazado') {
+    actionsHtml = `<p class="order-detail__meta">Este pedido fue rechazado.</p>`;
+  } else {
+    actionsHtml = `
+      <div class="order-actions">
+        <a class="btn-admin btn-admin--primary btn-full" target="_blank" href="${waLink(storeSettings.whatsappSupplier, supplierMsg)}">📦 Enviar specs al proveedor</a>
+      </div>
+      <p class="order-detail__meta" style="margin-top:1rem">Actualizar estado (abre WhatsApp al cliente):</p>
+      <div class="order-status-row">${statusButtons}</div>`;
+  }
 
   el.innerHTML = `
     <h3>Pedido #${o.orderNumber}</h3>
@@ -532,15 +558,16 @@ function renderOrderDetail() {
     <div class="order-total"><span>Total</span><span>${fmt(o.total)}</span></div>
     <p class="order-detail__meta">Pago: ${paymentLabel(o.paymentMethod)}${o.address ? ` · Envío a: ${o.address}` : ''}</p>
     ${receiptHtml}
-    <div class="order-actions">
-      <a class="btn-admin btn-admin--primary btn-full" target="_blank" href="${waLink(storeSettings.whatsappSupplier, supplierMsg)}">📦 Enviar specs al proveedor</a>
-    </div>
-    <p class="order-detail__meta" style="margin-top:1rem">Actualizar estado (abre WhatsApp al cliente):</p>
-    <div class="order-status-row">${statusButtons}</div>
+    ${actionsHtml}
   `;
 
   el.querySelectorAll('[data-status]').forEach(btn => {
     btn.addEventListener('click', () => updateOrderStatus(o, btn.dataset.status));
+  });
+  el.querySelector('[data-accept]')?.addEventListener('click', () => updateOrderStatus(o, 'armando'));
+  el.querySelector('[data-reject]')?.addEventListener('click', () => {
+    if (!confirm('¿Rechazar este pedido? Se avisará al cliente por WhatsApp.')) return;
+    updateOrderStatus(o, 'rechazado');
   });
 }
 
@@ -556,7 +583,7 @@ async function updateOrderStatus(order, newStatus) {
   if (buildMsg && order.customerPhone) {
     window.open(waLink(order.customerPhone, buildMsg(order)), '_blank');
   }
-  toast(`Pedido #${order.orderNumber} → ${ORDER_STATUSES.find(s => s.id === newStatus)?.label}`);
+  toast(`Pedido #${order.orderNumber} → ${statusLabel(newStatus)}`);
 }
 
 /* ===================================================================

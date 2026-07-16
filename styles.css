@@ -667,6 +667,7 @@ svg { width: 22px; height: 22px; }
 .status-pill--listo { background: rgba(52,199,142,.18); color: #34c78e; }
 .status-pill--en_camino { background: rgba(46,105,255,.3); color: #cddcff; }
 .status-pill--entregado { background: rgba(255,255,255,.08); color: var(--muted); }
+.status-pill--rechazado { background: rgba(229,72,77,.18); color: #e5484d; }
 
 /* ============================================================
    MODALES (quick view + checkout)
