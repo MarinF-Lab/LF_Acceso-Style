@@ -280,12 +280,14 @@
           </div>
 
           <div id="shippingDomicilioFields">
+            <button type="button" class="maps-link" id="locateMeBtn">📍 Usar mi ubicación actual</button>
+            <div id="addressMap" class="address-map"></div>
+            <p class="map-hint" id="mapHint">Toca el mapa o arrastra el pin para completar tu dirección automáticamente.</p>
             <div class="form-row">
               <div class="form-group"><label>Calle</label><input type="text" id="coStreet" required /></div>
               <div class="form-group"><label>Número (casa/depto)</label><input type="text" id="coHouseNumber" required /></div>
             </div>
             <div class="form-group"><label>Descripción (opcional)</label><input type="text" id="coAddressDesc" placeholder="Ej: casa azul, portón negro" /></div>
-            <button type="button" class="maps-link" id="mapsLinkDomicilio">📍 Ver mi dirección en Google Maps</button>
           </div>
 
           <div id="shippingSucursalFields" hidden>
@@ -323,6 +325,9 @@
     </div>
   </div>
 
+  <!-- Mapa de dirección: Leaflet + OpenStreetMap (gratis, sin API key ni tarjeta de crédito) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script type="module" src="script.js"></script>
 </body>
 </html>
