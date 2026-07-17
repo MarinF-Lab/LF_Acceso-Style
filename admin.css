@@ -202,7 +202,11 @@ textarea { resize: vertical; }
 /* ── Toolbar / forms ── */
 .view-toolbar { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
 .view-toolbar .admin-input { max-width: 320px; }
-.view-intro { color: var(--muted); font-size: .85rem; flex: 1; min-width: 200px; }
+.view-intro { color: var(--muted); font-size: .85rem; flex: 1; min-width: 200px; margin-top: .3rem; }
+
+.catalog-config-section { padding-bottom: 2rem; margin-bottom: 2rem; border-bottom: 1px solid var(--line); }
+.catalog-config-section:last-child { padding-bottom: 0; margin-bottom: 0; border-bottom: none; }
+.catalog-config-section__title { font-family: var(--display); font-size: 1.1rem; font-weight: 800; }
 
 .cat-order-controls { display: flex; gap: .3rem; }
 .cat-order-btn {

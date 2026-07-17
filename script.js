@@ -1,6 +1,6 @@
 import { supabase } from './supabase-config.js';
 import { applyContent } from './content-fields.js';
-import { DEFAULT_CATEGORIES, renderCategoryCards } from './categories.js';
+import { DEFAULT_CATEGORIES, DEFAULT_PRODUCT_TYPES, SIZES, renderCategoryCards } from './categories.js';
 
 /* ===================================================================
    UI base (menú móvil, scroll nav, newsletter)
@@ -135,6 +135,23 @@ async function loadCategories() {
   }
 }
 
+async function loadProductTypes() {
+  const filters = document.getElementById('filters');
+  const renderChips = (types) => {
+    const sorted = [...types].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    filters.innerHTML = `<button class="chip is-active" data-filter="all">Todo</button>` +
+      sorted.map(t => `<button class="chip" data-filter="${t.id}">${t.name}</button>`).join('');
+  };
+  try {
+    const { data, error } = await withTimeout(supabase.from('product_types').select('*'), 8000, 'product_types');
+    if (error) throw error;
+    renderChips(data.length ? data : DEFAULT_PRODUCT_TYPES);
+  } catch (err) {
+    console.error('No se pudieron cargar los tipos de producto (se usan los por defecto):', err);
+    renderChips(DEFAULT_PRODUCT_TYPES);
+  }
+}
+
 /* ===================================================================
    CATÁLOGO
    =================================================================== */
@@ -229,7 +246,7 @@ function openQuickView(productId) {
 
   const sizeStock = p.sizeStock || {};
   const sizesRow = document.getElementById('qvSizes');
-  const sizes = Object.keys(sizeStock).length ? Object.keys(sizeStock) : ['S', 'M', 'L', 'XL'];
+  const sizes = Object.keys(sizeStock).length ? Object.keys(sizeStock) : SIZES;
   sizesRow.innerHTML = sizes.map(s => {
     const available = sizeStock[s] === undefined ? true : sizeStock[s] > 0;
     return `<button type="button" class="size-btn" data-size="${s}" ${available ? '' : 'disabled'}>${s}</button>`;
@@ -700,7 +717,7 @@ if (!EDITOR_MODE && 'serviceWorker' in navigator) {
   if (!EDITOR_MODE) loadPageContent();
   loadCategories();
   try {
-    await Promise.all([loadProducts(), loadSettings()]);
+    await Promise.all([loadProducts(), loadSettings(), loadProductTypes()]);
     renderCatalog();
     applySocialLinks();
   } catch (err) {

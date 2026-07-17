@@ -1,6 +1,6 @@
 import { supabase } from './supabase-config.js';
 import { CONTENT_SECTIONS, CONTENT_FIELDS, applyContent, renderHeroTitle, getContent } from './content-fields.js';
-import { DEFAULT_CATEGORIES, sortCategories } from './categories.js';
+import { DEFAULT_CATEGORIES, DEFAULT_PRODUCT_TYPES, SIZES, sortCategories } from './categories.js';
 
 // Alcance restringido a esta página para poder instalarse como app aparte
 // de la tienda pública (que registra su propio service worker).
@@ -42,8 +42,9 @@ let storeSettings = {};
 let pageContent = {};
 let editingProductId = null;
 let selectedOrderId = null;
+let allProductTypes = [];
+let editingProductTypeId = null;
 
-const SIZES = ['S', 'M', 'L', 'XL'];
 const ORDER_STATUSES = [
   { id: 'nuevo',      label: 'Nuevo' },
   { id: 'armando',    label: 'Armando' },
@@ -113,11 +114,13 @@ async function showAdmin() {
   loginScreen.style.display = 'none';
   adminApp.style.display = 'flex';
   try {
-    await Promise.all([refreshProducts(), refreshOrders(), refreshCategories(), loadSettings(), loadPageContent()]);
+    await Promise.all([refreshProducts(), refreshOrders(), refreshCategories(), refreshProductTypes(), loadSettings(), loadPageContent()]);
     renderDashboard();
     renderProductsTable();
     renderOrdersTable();
     renderCategoriesTable();
+    renderProductTypesTable();
+    populateProductFormSelects();
   } catch (err) {
     console.error(err);
     toast('No se pudo conectar con Supabase. Revisa supabase-config.js (¿tiene tus claves reales?).');
@@ -169,6 +172,28 @@ async function refreshProducts() {
   allProducts = data;
 }
 
+/** Tallas fijas (SIZES) — se dibuja una sola vez, no depende de datos de Supabase. */
+function renderSizeStockGrid() {
+  document.getElementById('sizeStockGrid').innerHTML = SIZES
+    .map(s => `<div class="size-stock-item"><span>${s}</span><input type="number" min="0" data-size="${s}" value="0" /></div>`)
+    .join('');
+}
+renderSizeStockGrid();
+
+/** Rellena los selects de Categoría y Tipo del formulario de producto con lo
+    cargado en Categorías, preservando la selección actual si sigue existiendo. */
+function populateProductFormSelects() {
+  const catSelect = document.getElementById('pCategory');
+  const prevCat = catSelect.value;
+  catSelect.innerHTML = allCategories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  if (allCategories.some(c => c.id === prevCat)) catSelect.value = prevCat;
+
+  const typeSelect = document.getElementById('pType');
+  const prevType = typeSelect.value;
+  typeSelect.innerHTML = allProductTypes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  if (allProductTypes.some(t => t.id === prevType)) typeSelect.value = prevType;
+}
+
 function totalStock(p) {
   if (!p.sizeStock) return p.stock || 0;
   return Object.values(p.sizeStock).reduce((a, b) => a + (Number(b) || 0), 0);
@@ -187,7 +212,7 @@ function renderProductsTable() {
       return `<tr data-id="${p.id}">
         <td data-label="Imagen"><img class="thumb" src="${p.imageUrl || ''}" onerror="this.style.visibility='hidden'" /></td>
         <td data-label="Nombre">${p.name}</td>
-        <td data-label="Categoría" style="text-transform:capitalize">${p.category || '—'}</td>
+        <td data-label="Categoría">${allCategories.find(c => c.id === p.category)?.name || p.category || '—'}</td>
         <td data-label="Precio">${fmt(p.price)}</td>
         <td data-label="Stock">${stockBadge}</td>
         <td data-label="Etiqueta">${p.tag ? `<span class="badge badge--nuevo">${p.tag === 'top' ? 'Top ventas' : 'Nuevo'}</span>` : '—'}</td>
@@ -389,6 +414,7 @@ async function moveCategory(id, direction) {
   if (error) { toast('Error al reordenar: ' + error.message); return; }
   await refreshCategories();
   renderCategoriesTable();
+  populateProductFormSelects();
 }
 
 async function toggleCategoryHidden(id) {
@@ -417,6 +443,7 @@ function confirmDeleteCategory(id) {
     if (error) { toast('Error al eliminar: ' + error.message); return; }
     await refreshCategories();
     renderCategoriesTable();
+    populateProductFormSelects();
     toast('Categoría eliminada');
   });
 }
@@ -462,6 +489,126 @@ document.getElementById('saveCategoryBtn').addEventListener('click', async () =>
     document.getElementById('categoryForm').hidden = true;
     await refreshCategories();
     renderCategoriesTable();
+    populateProductFormSelects();
+  } catch (err) {
+    console.error(err);
+    toast('Error al guardar: ' + err.message);
+  }
+});
+
+/* ===================================================================
+   TIPOS DE PRODUCTO
+   =================================================================== */
+async function refreshProductTypes() {
+  const { data, error } = await withTimeout(supabase.from('product_types').select('*'), 8000, 'product_types');
+  if (error) throw error;
+  allProductTypes = sortCategories(data.length ? data : DEFAULT_PRODUCT_TYPES);
+}
+
+function renderProductTypesTable() {
+  const tbody = document.querySelector('#productTypesTable tbody');
+  tbody.innerHTML = allProductTypes.map((t, idx) => `
+    <tr data-id="${t.id}">
+      <td data-label="Orden">
+        <div class="cat-order-controls">
+          <button type="button" class="cat-order-btn" data-move="up" data-id="${t.id}" ${idx === 0 ? 'disabled' : ''}>↑</button>
+          <button type="button" class="cat-order-btn" data-move="down" data-id="${t.id}" ${idx === allProductTypes.length - 1 ? 'disabled' : ''}>↓</button>
+        </div>
+      </td>
+      <td data-label="Nombre">${t.name}</td>
+      <td data-label="">
+        <button type="button" class="btn-admin" data-edit="${t.id}">Editar</button>
+        <button type="button" class="btn-admin btn-admin--danger" data-del="${t.id}">Eliminar</button>
+      </td>
+    </tr>`).join('') || `<tr><td colspan="3" style="text-align:center;color:var(--dim);padding:2rem">Sin tipos aún. Agrega el primero.</td></tr>`;
+
+  tbody.querySelectorAll('tr[data-id]').forEach(tr => {
+    tr.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      editProductType(tr.dataset.id);
+    });
+  });
+  tbody.querySelectorAll('[data-move]').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); moveProductType(btn.dataset.id, btn.dataset.move); });
+  });
+  tbody.querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); editProductType(btn.dataset.edit); });
+  });
+  tbody.querySelectorAll('[data-del]').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); confirmDeleteProductType(btn.dataset.del); });
+  });
+}
+
+async function moveProductType(id, direction) {
+  const idx = allProductTypes.findIndex(t => t.id === id);
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (idx === -1 || swapIdx < 0 || swapIdx >= allProductTypes.length) return;
+  const a = allProductTypes[idx];
+  const b = allProductTypes[swapIdx];
+  const { error } = await supabase.from('product_types').upsert([
+    { ...a, order: b.order },
+    { ...b, order: a.order },
+  ]);
+  if (error) { toast('Error al reordenar: ' + error.message); return; }
+  await refreshProductTypes();
+  renderProductTypesTable();
+  populateProductFormSelects();
+}
+
+function editProductType(id) {
+  const t = allProductTypes.find(x => x.id === id);
+  if (!t) return;
+  editingProductTypeId = id;
+  document.getElementById('productTypeId').value = t.id;
+  document.getElementById('typeName').value = t.name || '';
+  document.getElementById('productTypeFormTitle').textContent = 'Editar tipo';
+  document.getElementById('productTypeForm').hidden = false;
+}
+
+function confirmDeleteProductType(id) {
+  if (!confirm('¿Eliminar este tipo? Esta acción no se puede deshacer.')) return;
+  supabase.from('product_types').delete().eq('id', id).then(async ({ error }) => {
+    if (error) { toast('Error al eliminar: ' + error.message); return; }
+    await refreshProductTypes();
+    renderProductTypesTable();
+    populateProductFormSelects();
+    toast('Tipo eliminado');
+  });
+}
+
+document.getElementById('addProductTypeBtn').addEventListener('click', () => {
+  editingProductTypeId = null;
+  document.getElementById('productTypeId').value = '';
+  document.getElementById('typeName').value = '';
+  document.getElementById('productTypeFormTitle').textContent = 'Nuevo tipo';
+  document.getElementById('productTypeForm').hidden = false;
+});
+
+document.getElementById('cancelProductTypeForm').addEventListener('click', () => {
+  document.getElementById('productTypeForm').hidden = true;
+});
+
+document.getElementById('saveProductTypeBtn').addEventListener('click', async () => {
+  const name = document.getElementById('typeName').value.trim();
+  if (!name) { toast('El nombre del tipo es obligatorio'); return; }
+
+  try {
+    if (editingProductTypeId) {
+      const { error } = await supabase.from('product_types').update({ name }).eq('id', editingProductTypeId);
+      if (error) throw error;
+      toast('Tipo actualizado');
+    } else {
+      let id = slugifyCategoryName(name) || `type-${Date.now()}`;
+      if (allProductTypes.some(t => t.id === id)) id = `${id}-${Date.now()}`;
+      const order = allProductTypes.length ? Math.max(...allProductTypes.map(t => t.order ?? 0)) + 1 : 0;
+      const { error } = await supabase.from('product_types').insert({ id, name, order });
+      if (error) throw error;
+      toast('Tipo creado');
+    }
+    document.getElementById('productTypeForm').hidden = true;
+    await refreshProductTypes();
+    renderProductTypesTable();
+    populateProductFormSelects();
   } catch (err) {
     console.error(err);
     toast('Error al guardar: ' + err.message);

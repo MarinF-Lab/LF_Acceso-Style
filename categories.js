@@ -1,11 +1,23 @@
-// Categorías de la tienda — fuente compartida entre la tienda pública
-// (script.js) y el panel admin (admin.js). Se guardan en Firestore
-// (colección "categories"); si no hay ninguna, se usan estas por defecto.
+// Categorías y tipos de producto — fuente compartida entre la tienda
+// pública (script.js) y el panel admin (admin.js). Se guardan en Supabase
+// (tablas "categories" y "product_types"); si no hay ninguna, se usan estos
+// valores por defecto.
 export const DEFAULT_CATEGORIES = [
   { id: 'hombre',    name: 'Hombre',    description: 'Poleras, polerones, cargos y más.', order: 0, hidden: false },
   { id: 'unisex',    name: 'Unisex',    description: 'Oversize y básicos para todes.',    order: 1, hidden: false },
   { id: 'novedades', name: 'Novedades', description: 'Lo último que llegó a la tienda.',   order: 2, hidden: false },
 ];
+
+export const DEFAULT_PRODUCT_TYPES = [
+  { id: 'polera',   name: 'Polera',   order: 0 },
+  { id: 'poleron',  name: 'Polerón',  order: 1 },
+  { id: 'pantalon', name: 'Pantalón', order: 2 },
+  { id: 'chaqueta', name: 'Chaqueta', order: 3 },
+];
+
+// Tallas disponibles al crear/editar un producto y en el selector del
+// quick view de la tienda.
+export const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
 export function sortCategories(cats) {
   return [...cats].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));

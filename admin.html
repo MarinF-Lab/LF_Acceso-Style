@@ -153,20 +153,13 @@
           </div>
           <div class="form-group">
             <label for="pCategory">Categoría</label>
-            <select id="pCategory">
-              <option value="hombre">Hombre</option>
-              <option value="unisex">Unisex</option>
-              <option value="novedades">Novedades</option>
-            </select>
+            <select id="pCategory"></select>
+            <p class="field-hint">¿Falta una? Agrégala en <strong>Categorías → Categorías</strong>.</p>
           </div>
           <div class="form-group">
             <label for="pType">Tipo (para filtros)</label>
-            <select id="pType">
-              <option value="polera">Polera</option>
-              <option value="poleron">Polerón</option>
-              <option value="pantalon">Pantalón</option>
-              <option value="chaqueta">Chaqueta</option>
-            </select>
+            <select id="pType"></select>
+            <p class="field-hint">¿Falta uno? Agrégalo en <strong>Categorías → Tipos de producto</strong>.</p>
           </div>
           <div class="form-group">
             <label for="pPrice">Precio (CLP)</label>
@@ -196,12 +189,7 @@
           </div>
           <div class="form-group form-group--full">
             <label>Stock por talla</label>
-            <div class="size-stock-grid" id="sizeStockGrid">
-              <div class="size-stock-item"><span>S</span><input type="number" min="0" data-size="S" value="0" /></div>
-              <div class="size-stock-item"><span>M</span><input type="number" min="0" data-size="M" value="0" /></div>
-              <div class="size-stock-item"><span>L</span><input type="number" min="0" data-size="L" value="0" /></div>
-              <div class="size-stock-item"><span>XL</span><input type="number" min="0" data-size="XL" value="0" /></div>
-            </div>
+            <div class="size-stock-grid" id="sizeStockGrid"></div>
           </div>
           <div class="form-actions form-group--full">
             <button type="button" class="btn-admin" id="cancelProductForm">Cancelar</button>
@@ -212,33 +200,69 @@
 
       <!-- ===== CATEGORÍAS ===== -->
       <section class="view" id="view-categories">
-        <div class="view-toolbar">
-          <p class="view-intro">Las categorías que aparecen en la portada de la tienda. Arrastra el orden con las flechas, oculta las que no quieras mostrar, o crea nuevas.</p>
-          <button class="btn-admin btn-admin--primary" id="addCategoryBtn">+ Nueva categoría</button>
-        </div>
-        <div class="table-wrap">
-          <table class="admin-table" id="categoriesTable">
-            <thead><tr><th>Orden</th><th>Nombre</th><th>Descripción</th><th>Visible</th><th></th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-
-        <div class="panel category-form" id="categoryForm" hidden>
-          <h2 id="categoryFormTitle">Nueva categoría</h2>
-          <input type="hidden" id="categoryId" />
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="catName">Nombre</label>
-              <input type="text" id="catName" class="admin-input" placeholder="Ej: Poleras" />
+        <div class="catalog-config-section">
+          <div class="view-toolbar">
+            <div>
+              <h2 class="catalog-config-section__title">Categorías</h2>
+              <p class="view-intro">Las que aparecen en la portada de la tienda y en el selector "Categoría" al agregar un producto. Arrastra el orden con las flechas, oculta las que no quieras mostrar, o crea nuevas.</p>
             </div>
-            <div class="form-group form-group--full">
-              <label for="catDesc">Descripción</label>
-              <input type="text" id="catDesc" class="admin-input" placeholder="Texto corto que se muestra en la tarjeta" />
+            <button class="btn-admin btn-admin--primary" id="addCategoryBtn">+ Nueva categoría</button>
+          </div>
+          <div class="table-wrap">
+            <table class="admin-table" id="categoriesTable">
+              <thead><tr><th>Orden</th><th>Nombre</th><th>Descripción</th><th>Visible</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div class="panel category-form" id="categoryForm" hidden>
+            <h2 id="categoryFormTitle">Nueva categoría</h2>
+            <input type="hidden" id="categoryId" />
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="catName">Nombre</label>
+                <input type="text" id="catName" class="admin-input" placeholder="Ej: Poleras" />
+              </div>
+              <div class="form-group form-group--full">
+                <label for="catDesc">Descripción</label>
+                <input type="text" id="catDesc" class="admin-input" placeholder="Texto corto que se muestra en la tarjeta" />
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn-admin" id="cancelCategoryForm">Cancelar</button>
+              <button type="button" class="btn-admin btn-admin--primary" id="saveCategoryBtn">Guardar categoría</button>
             </div>
           </div>
-          <div class="form-actions">
-            <button type="button" class="btn-admin" id="cancelCategoryForm">Cancelar</button>
-            <button type="button" class="btn-admin btn-admin--primary" id="saveCategoryBtn">Guardar categoría</button>
+        </div>
+
+        <div class="catalog-config-section">
+          <div class="view-toolbar">
+            <div>
+              <h2 class="catalog-config-section__title">Tipos de producto</h2>
+              <p class="view-intro">Los que aparecen como filtros en el catálogo (ej. Poleras, Chaquetas) y en el selector "Tipo" al agregar un producto.</p>
+            </div>
+            <button class="btn-admin btn-admin--primary" id="addProductTypeBtn">+ Nuevo tipo</button>
+          </div>
+          <div class="table-wrap">
+            <table class="admin-table" id="productTypesTable">
+              <thead><tr><th>Orden</th><th>Nombre</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div class="panel category-form" id="productTypeForm" hidden>
+            <h2 id="productTypeFormTitle">Nuevo tipo</h2>
+            <input type="hidden" id="productTypeId" />
+            <div class="form-grid">
+              <div class="form-group form-group--full">
+                <label for="typeName">Nombre</label>
+                <input type="text" id="typeName" class="admin-input" placeholder="Ej: Shorts" />
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn-admin" id="cancelProductTypeForm">Cancelar</button>
+              <button type="button" class="btn-admin btn-admin--primary" id="saveProductTypeBtn">Guardar tipo</button>
+            </div>
           </div>
         </div>
       </section>
