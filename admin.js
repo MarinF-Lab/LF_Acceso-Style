@@ -53,7 +53,7 @@ const ORDER_STATUSES = [
 ];
 const STATUS_MESSAGES = {
   armando:   (o) => `Hola ${o.customerName}! 👋 Tu pedido #${o.orderNumber} de LF Acceso Style fue *aceptado* y está *en preparación*. Te avisamos apenas salga en camino.`,
-  en_camino: (o) => `Hola ${o.customerName}! 🚚 Tu pedido #${o.orderNumber} va *en camino*. ¡Gracias por tu compra en LF Acceso Style!`,
+  en_camino: (o) => `Hola ${o.customerName}! 🚚 Tu pedido #${o.orderNumber} va *en camino*. Puedes revisar los datos y el código de seguimiento de tu pedido en tu correo. Si no recibiste el correo, contáctanos para recibir el comprobante y el estado de tu pedido.`,
   entregado: (o) => `Hola ${o.customerName}! 🎉 Tu pedido #${o.orderNumber} fue *entregado*. Gracias por confiar en LF Acceso Style.`,
   rechazado: (o) => `Hola ${o.customerName}, no pudimos confirmar el pago de tu pedido #${o.orderNumber} — revisa que el comprobante de transferencia esté correcto y respóndenos por este medio para resolverlo.`,
 };
@@ -78,6 +78,67 @@ function toast(msg) {
 function waLink(phone, message) {
   const digits = (phone || '').replace(/\D/g, '');
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+}
+
+function sanitizeFilename(str) {
+  return (str || 'producto').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'producto';
+}
+
+async function fetchAsFile(url, filename) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('No se pudo descargar la imagen');
+  const blob = await res.blob();
+  const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+  return new File([blob], `${filename}.${ext}`, { type: blob.type });
+}
+
+function downloadBlob(file) {
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = file.name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+/* Manda las fotos de los productos al proveedor como archivo real (no un
+   link) usando el selector nativo de "Compartir" del celular, con WhatsApp
+   como una de las opciones. Si el navegador no lo soporta (ej. computador de
+   escritorio), descarga las imágenes para adjuntar a mano y abre igual el
+   chat de WhatsApp con el texto ya listo. El texto también se copia al
+   portapapeles como respaldo, porque con varios productos WhatsApp no
+   siempre deja el texto pegado a todas las fotos a la vez. */
+async function sendToSupplier(o, supplierMsg) {
+  try { await navigator.clipboard.writeText(supplierMsg); } catch { /* portapapeles no disponible, no es crítico */ }
+
+  const items = (o.items || []).filter(it => it.imageUrl);
+  let files = [];
+  if (items.length) {
+    try {
+      files = await Promise.all(items.map((it, idx) =>
+        fetchAsFile(it.imageUrl, `pedido-${o.orderNumber}-${idx + 1}-${sanitizeFilename(it.name)}`)
+      ));
+    } catch {
+      files = [];
+    }
+  }
+
+  const canShareFiles = files.length && navigator.canShare && navigator.canShare({ files });
+  if (canShareFiles) {
+    try {
+      await navigator.share({ files, text: supplierMsg, title: `Pedido #${o.orderNumber}` });
+      return;
+    } catch (err) {
+      if (err?.name === 'AbortError') return; // el usuario canceló el compartir, no insistir
+      // cualquier otro error cae al respaldo de descarga + wa.me de abajo
+    }
+  }
+
+  files.forEach(downloadBlob);
+  window.open(waLink(storeSettings.whatsappSupplier, supplierMsg), '_blank');
 }
 
 /* ===================================================================
@@ -725,12 +786,13 @@ function renderOrderDetail() {
       </div>
     </div>`).join('');
 
-  // Formato pedido por el proveedor (arma los envíos por Starken): primero
-  // la lista de productos (con el link de imagen arriba de cada uno), luego
-  // los datos del cliente y del envío.
+  // Formato pedido por el proveedor (arma los envíos por Starken): la foto de
+  // cada producto se manda como archivo real (ver sendToSupplier), así que
+  // el texto ya no lleva el link de la imagen, solo talla/cantidad y los
+  // datos del cliente y del envío.
   const shippingDetailLine = o.shippingDetail || o.address || '';
   const supplierMsg = (o.items || []).map((it, idx) =>
-    `${it.imageUrl ? it.imageUrl + '\n' : ''}${idx + 1}. "${it.name}" - Talla ${it.size} - Cant. ${it.qty}`
+    `${idx + 1}. Talla: ${it.size} - Cant: ${it.qty}`
   ).join('\n') +
     `\nNombre y Apellido: ${o.customerName}` +
     `\nTeléfono: ${o.customerPhone || ''}` +
@@ -791,7 +853,7 @@ function renderOrderDetail() {
     // Al aceptar: avisa al cliente (pedido aceptado y en preparación) y
     // manda las specs al proveedor, en un solo paso.
     updateOrderStatus(o, 'armando');
-    window.open(waLink(storeSettings.whatsappSupplier, supplierMsg), '_blank');
+    sendToSupplier(o, supplierMsg);
   });
   el.querySelector('[data-reject]')?.addEventListener('click', () => {
     if (!confirm('¿Rechazar este pedido? Se avisará al cliente por WhatsApp.')) return;

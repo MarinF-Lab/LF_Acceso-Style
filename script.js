@@ -1,6 +1,7 @@
 import { supabase } from './supabase-config.js';
 import { applyContent } from './content-fields.js';
 import { DEFAULT_CATEGORIES, DEFAULT_PRODUCT_TYPES, SIZES, renderCategoryCards } from './categories.js';
+import { STARKEN_BRANCHES } from './starken-branches.js';
 
 /* ===================================================================
    UI base (menú móvil, scroll nav, newsletter)
@@ -613,7 +614,34 @@ document.querySelectorAll('.shipping-type-btn').forEach(btn => {
     document.getElementById('coHouseNumber').required = isDomicilio;
     document.getElementById('coStarkenBranch').required = !isDomicilio;
     if (isDomicilio) setTimeout(() => addressMap && addressMap.invalidateSize(), 60);
+    else populateStarkenBranches();
   });
+});
+
+/* Sucursal de Starken: se llena según la región elegida, ordenadas de
+   norte a sur (datos oficiales del CSV entregado por el cliente). */
+function populateStarkenBranches() {
+  const select = document.getElementById('coStarkenBranch');
+  const region = document.getElementById('coRegion').value;
+  const branches = STARKEN_BRANCHES[region] || [];
+  if (!region) {
+    select.innerHTML = '<option value="">Selecciona primero tu región</option>';
+    return;
+  }
+  if (!branches.length) {
+    select.innerHTML = '<option value="">No hay sucursales cargadas para esta región</option>';
+    return;
+  }
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  select.innerHTML = '<option value="">Selecciona una sucursal...</option>' +
+    branches.map(b => {
+      const label = esc(`${b.name} — ${b.address} (${b.comuna})`);
+      return `<option value="${label}">${label}</option>`;
+    }).join('');
+}
+
+document.getElementById('coRegion').addEventListener('change', () => {
+  if (shippingType === 'sucursal') populateStarkenBranches();
 });
 
 /* ===================================================================
