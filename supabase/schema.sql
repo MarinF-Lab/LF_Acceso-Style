@@ -58,6 +58,26 @@ insert into categories (id, name, description, "order", hidden) values
 on conflict (id) do nothing;
 
 -- ----------------------------------------------------------------------------
+-- TIPOS DE PRODUCTO (usados como filtros del catálogo, ej. Polera/Chaqueta)
+-- ----------------------------------------------------------------------------
+create table if not exists product_types (
+  id text primary key,
+  name text not null,
+  "order" integer not null default 0
+);
+
+alter table product_types enable row level security;
+create policy "product_types_select_public" on product_types for select using (true);
+create policy "product_types_write_public" on product_types for all using (true) with check (true);
+
+insert into product_types (id, name, "order") values
+  ('polera',   'Polera',   0),
+  ('poleron',  'Polerón',  1),
+  ('pantalon', 'Pantalón', 2),
+  ('chaqueta', 'Chaqueta', 3)
+on conflict (id) do nothing;
+
+-- ----------------------------------------------------------------------------
 -- PEDIDOS (orders)
 -- ----------------------------------------------------------------------------
 create table if not exists orders (
@@ -67,7 +87,12 @@ create table if not exists orders (
   "customerName" text,
   "customerPhone" text,
   "customerEmail" text,
-  address text,
+  "customerRut" text,
+  region text,
+  comuna text,
+  "shippingType" text, -- 'domicilio' | 'sucursal'
+  "shippingDetail" text, -- calle+número+descripción, o el nombre de la sucursal Starken
+  address text, -- formato antiguo, se mantiene solo para pedidos ya creados
   items jsonb not null default '[]'::jsonb,
   total numeric not null default 0,
   "paymentMethod" text,
@@ -89,6 +114,10 @@ create policy "orders_select_public" on orders for select using (true);
 create policy "orders_insert_own" on orders for insert with check (auth.uid() = "userId");
 create policy "orders_update_public" on orders for update using (true) with check (true);
 create policy "orders_delete_public" on orders for delete using (true);
+
+-- Habilita Realtime en orders para que el panel admin se refresque y
+-- muestre una notificación apenas llega un pedido nuevo.
+alter publication supabase_realtime add table orders;
 
 -- ----------------------------------------------------------------------------
 -- CONFIGURACIÓN (settings/store y settings/content de Firestore)

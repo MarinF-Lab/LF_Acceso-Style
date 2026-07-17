@@ -1,6 +1,6 @@
 import { supabase } from './supabase-config.js';
 import { CONTENT_SECTIONS, CONTENT_FIELDS, applyContent, renderHeroTitle, getContent } from './content-fields.js';
-import { DEFAULT_CATEGORIES, sortCategories } from './categories.js';
+import { DEFAULT_CATEGORIES, DEFAULT_PRODUCT_TYPES, SIZES, sortCategories } from './categories.js';
 
 // Alcance restringido a esta página para poder instalarse como app aparte
 // de la tienda pública (que registra su propio service worker).
@@ -42,8 +42,9 @@ let storeSettings = {};
 let pageContent = {};
 let editingProductId = null;
 let selectedOrderId = null;
+let allProductTypes = [];
+let editingProductTypeId = null;
 
-const SIZES = ['S', 'M', 'L', 'XL'];
 const ORDER_STATUSES = [
   { id: 'nuevo',      label: 'Nuevo' },
   { id: 'armando',    label: 'Armando' },
@@ -113,11 +114,14 @@ async function showAdmin() {
   loginScreen.style.display = 'none';
   adminApp.style.display = 'flex';
   try {
-    await Promise.all([refreshProducts(), refreshOrders(), refreshCategories(), loadSettings(), loadPageContent()]);
+    await Promise.all([refreshProducts(), refreshOrders(), refreshCategories(), refreshProductTypes(), loadSettings(), loadPageContent()]);
     renderDashboard();
     renderProductsTable();
     renderOrdersTable();
     renderCategoriesTable();
+    renderProductTypesTable();
+    populateProductFormSelects();
+    subscribeToNewOrders();
   } catch (err) {
     console.error(err);
     toast('No se pudo conectar con Supabase. Revisa supabase-config.js (¿tiene tus claves reales?).');
@@ -169,6 +173,28 @@ async function refreshProducts() {
   allProducts = data;
 }
 
+/** Tallas fijas (SIZES) — se dibuja una sola vez, no depende de datos de Supabase. */
+function renderSizeStockGrid() {
+  document.getElementById('sizeStockGrid').innerHTML = SIZES
+    .map(s => `<div class="size-stock-item"><span>${s}</span><input type="number" min="0" data-size="${s}" value="0" /></div>`)
+    .join('');
+}
+renderSizeStockGrid();
+
+/** Rellena los selects de Categoría y Tipo del formulario de producto con lo
+    cargado en Categorías, preservando la selección actual si sigue existiendo. */
+function populateProductFormSelects() {
+  const catSelect = document.getElementById('pCategory');
+  const prevCat = catSelect.value;
+  catSelect.innerHTML = allCategories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  if (allCategories.some(c => c.id === prevCat)) catSelect.value = prevCat;
+
+  const typeSelect = document.getElementById('pType');
+  const prevType = typeSelect.value;
+  typeSelect.innerHTML = allProductTypes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  if (allProductTypes.some(t => t.id === prevType)) typeSelect.value = prevType;
+}
+
 function totalStock(p) {
   if (!p.sizeStock) return p.stock || 0;
   return Object.values(p.sizeStock).reduce((a, b) => a + (Number(b) || 0), 0);
@@ -187,7 +213,7 @@ function renderProductsTable() {
       return `<tr data-id="${p.id}">
         <td data-label="Imagen"><img class="thumb" src="${p.imageUrl || ''}" onerror="this.style.visibility='hidden'" /></td>
         <td data-label="Nombre">${p.name}</td>
-        <td data-label="Categoría" style="text-transform:capitalize">${p.category || '—'}</td>
+        <td data-label="Categoría">${allCategories.find(c => c.id === p.category)?.name || p.category || '—'}</td>
         <td data-label="Precio">${fmt(p.price)}</td>
         <td data-label="Stock">${stockBadge}</td>
         <td data-label="Etiqueta">${p.tag ? `<span class="badge badge--nuevo">${p.tag === 'top' ? 'Top ventas' : 'Nuevo'}</span>` : '—'}</td>
@@ -389,6 +415,7 @@ async function moveCategory(id, direction) {
   if (error) { toast('Error al reordenar: ' + error.message); return; }
   await refreshCategories();
   renderCategoriesTable();
+  populateProductFormSelects();
 }
 
 async function toggleCategoryHidden(id) {
@@ -417,6 +444,7 @@ function confirmDeleteCategory(id) {
     if (error) { toast('Error al eliminar: ' + error.message); return; }
     await refreshCategories();
     renderCategoriesTable();
+    populateProductFormSelects();
     toast('Categoría eliminada');
   });
 }
@@ -462,6 +490,126 @@ document.getElementById('saveCategoryBtn').addEventListener('click', async () =>
     document.getElementById('categoryForm').hidden = true;
     await refreshCategories();
     renderCategoriesTable();
+    populateProductFormSelects();
+  } catch (err) {
+    console.error(err);
+    toast('Error al guardar: ' + err.message);
+  }
+});
+
+/* ===================================================================
+   TIPOS DE PRODUCTO
+   =================================================================== */
+async function refreshProductTypes() {
+  const { data, error } = await withTimeout(supabase.from('product_types').select('*'), 8000, 'product_types');
+  if (error) throw error;
+  allProductTypes = sortCategories(data.length ? data : DEFAULT_PRODUCT_TYPES);
+}
+
+function renderProductTypesTable() {
+  const tbody = document.querySelector('#productTypesTable tbody');
+  tbody.innerHTML = allProductTypes.map((t, idx) => `
+    <tr data-id="${t.id}">
+      <td data-label="Orden">
+        <div class="cat-order-controls">
+          <button type="button" class="cat-order-btn" data-move="up" data-id="${t.id}" ${idx === 0 ? 'disabled' : ''}>↑</button>
+          <button type="button" class="cat-order-btn" data-move="down" data-id="${t.id}" ${idx === allProductTypes.length - 1 ? 'disabled' : ''}>↓</button>
+        </div>
+      </td>
+      <td data-label="Nombre">${t.name}</td>
+      <td data-label="">
+        <button type="button" class="btn-admin" data-edit="${t.id}">Editar</button>
+        <button type="button" class="btn-admin btn-admin--danger" data-del="${t.id}">Eliminar</button>
+      </td>
+    </tr>`).join('') || `<tr><td colspan="3" style="text-align:center;color:var(--dim);padding:2rem">Sin tipos aún. Agrega el primero.</td></tr>`;
+
+  tbody.querySelectorAll('tr[data-id]').forEach(tr => {
+    tr.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      editProductType(tr.dataset.id);
+    });
+  });
+  tbody.querySelectorAll('[data-move]').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); moveProductType(btn.dataset.id, btn.dataset.move); });
+  });
+  tbody.querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); editProductType(btn.dataset.edit); });
+  });
+  tbody.querySelectorAll('[data-del]').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); confirmDeleteProductType(btn.dataset.del); });
+  });
+}
+
+async function moveProductType(id, direction) {
+  const idx = allProductTypes.findIndex(t => t.id === id);
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (idx === -1 || swapIdx < 0 || swapIdx >= allProductTypes.length) return;
+  const a = allProductTypes[idx];
+  const b = allProductTypes[swapIdx];
+  const { error } = await supabase.from('product_types').upsert([
+    { ...a, order: b.order },
+    { ...b, order: a.order },
+  ]);
+  if (error) { toast('Error al reordenar: ' + error.message); return; }
+  await refreshProductTypes();
+  renderProductTypesTable();
+  populateProductFormSelects();
+}
+
+function editProductType(id) {
+  const t = allProductTypes.find(x => x.id === id);
+  if (!t) return;
+  editingProductTypeId = id;
+  document.getElementById('productTypeId').value = t.id;
+  document.getElementById('typeName').value = t.name || '';
+  document.getElementById('productTypeFormTitle').textContent = 'Editar tipo';
+  document.getElementById('productTypeForm').hidden = false;
+}
+
+function confirmDeleteProductType(id) {
+  if (!confirm('¿Eliminar este tipo? Esta acción no se puede deshacer.')) return;
+  supabase.from('product_types').delete().eq('id', id).then(async ({ error }) => {
+    if (error) { toast('Error al eliminar: ' + error.message); return; }
+    await refreshProductTypes();
+    renderProductTypesTable();
+    populateProductFormSelects();
+    toast('Tipo eliminado');
+  });
+}
+
+document.getElementById('addProductTypeBtn').addEventListener('click', () => {
+  editingProductTypeId = null;
+  document.getElementById('productTypeId').value = '';
+  document.getElementById('typeName').value = '';
+  document.getElementById('productTypeFormTitle').textContent = 'Nuevo tipo';
+  document.getElementById('productTypeForm').hidden = false;
+});
+
+document.getElementById('cancelProductTypeForm').addEventListener('click', () => {
+  document.getElementById('productTypeForm').hidden = true;
+});
+
+document.getElementById('saveProductTypeBtn').addEventListener('click', async () => {
+  const name = document.getElementById('typeName').value.trim();
+  if (!name) { toast('El nombre del tipo es obligatorio'); return; }
+
+  try {
+    if (editingProductTypeId) {
+      const { error } = await supabase.from('product_types').update({ name }).eq('id', editingProductTypeId);
+      if (error) throw error;
+      toast('Tipo actualizado');
+    } else {
+      let id = slugifyCategoryName(name) || `type-${Date.now()}`;
+      if (allProductTypes.some(t => t.id === id)) id = `${id}-${Date.now()}`;
+      const order = allProductTypes.length ? Math.max(...allProductTypes.map(t => t.order ?? 0)) + 1 : 0;
+      const { error } = await supabase.from('product_types').insert({ id, name, order });
+      if (error) throw error;
+      toast('Tipo creado');
+    }
+    document.getElementById('productTypeForm').hidden = true;
+    await refreshProductTypes();
+    renderProductTypesTable();
+    populateProductFormSelects();
   } catch (err) {
     console.error(err);
     toast('Error al guardar: ' + err.message);
@@ -478,6 +626,42 @@ async function refreshOrders() {
   if (error) throw error;
   allOrders = data;
 }
+
+/* Actualiza la lista de pedidos sola apenas un cliente confirma uno nuevo
+   (Supabase Realtime), sin tener que recargar la página a mano. Requiere
+   que la tabla "orders" esté agregada a la publicación supabase_realtime
+   (ver supabase/migrations/004_add_starken_shipping.sql). */
+let realtimeSubscribed = false;
+function subscribeToNewOrders() {
+  if (realtimeSubscribed) return;
+  realtimeSubscribed = true;
+  supabase
+    .channel('orders-inserts')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, async () => {
+      await refreshOrders();
+      renderOrdersTable();
+      renderOrderDetail();
+      renderDashboard();
+      toast('📦 Llegó un pedido nuevo');
+      notifyNewOrder();
+    })
+    .subscribe();
+}
+
+async function notifyNewOrder() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const reg = await navigator.serviceWorker.getRegistration();
+  const options = { body: 'Entra al panel para revisarlo.', icon: 'assets/icon-192.png' };
+  if (reg) reg.showNotification('Nuevo pedido — LF Acceso Style', options);
+  else new Notification('Nuevo pedido — LF Acceso Style', options);
+}
+
+async function requestOrderNotifications() {
+  if (!('Notification' in window)) { toast('Tu navegador no soporta notificaciones.'); return; }
+  const perm = await Notification.requestPermission();
+  toast(perm === 'granted' ? 'Notificaciones activadas ✓' : 'No se activaron las notificaciones.');
+}
+document.getElementById('enableNotificationsBtn')?.addEventListener('click', requestOrderNotifications);
 
 function paymentLabel(method) {
   return method === 'mercadopago' ? 'Mercado Pago' : method === 'transfer' ? 'Transferencia' : method || '—';
@@ -541,9 +725,22 @@ function renderOrderDetail() {
       </div>
     </div>`).join('');
 
-  const supplierMsg = `Nuevo pedido #${o.orderNumber} para armar:\n` +
-    (o.items || []).map(it => `• ${it.name} — Talla ${it.size} — Cant. ${it.qty}${it.imageUrl ? `\n  Imagen: ${it.imageUrl}` : ''}`).join('\n') +
-    `\n\nCliente: ${o.customerName}${o.address ? `\nDirección: ${o.address}` : ''}`;
+  // Formato pedido por el proveedor (arma los envíos por Starken): primero
+  // la lista de productos (con el link de imagen arriba de cada uno), luego
+  // los datos del cliente y del envío.
+  const shippingDetailLine = o.shippingDetail || o.address || '';
+  const supplierMsg = (o.items || []).map((it, idx) =>
+    `${it.imageUrl ? it.imageUrl + '\n' : ''}${idx + 1}. "${it.name}" - Talla ${it.size} - Cant. ${it.qty}`
+  ).join('\n') +
+    `\nNombre y Apellido: ${o.customerName}` +
+    `\nTeléfono: ${o.customerPhone || ''}` +
+    `\nEmail: ${o.customerEmail || ''}` +
+    `\nRegión y Comuna: ${o.region || ''}, ${o.comuna || ''}` +
+    `\nDomicilio:/Sucursal de Starken: ${shippingDetailLine}`;
+
+  const shippingMeta = o.shippingDetail
+    ? `${o.region || ''}, ${o.comuna || ''} — ${o.shippingType === 'sucursal' ? 'Sucursal: ' : ''}${o.shippingDetail}`
+    : o.address;
 
   const receiptHtml = o.receiptUrl
     ? `<a class="receipt-link" href="${o.receiptUrl}" target="_blank" rel="noopener">📎 Ver comprobante de transferencia</a>`
@@ -583,7 +780,8 @@ function renderOrderDetail() {
     <p class="order-detail__meta">${o.customerName} · ${o.customerPhone || 'sin teléfono'} · ${new Date(o.createdAt).toLocaleString('es-CL')}</p>
     ${itemsHtml}
     <div class="order-total"><span>Total</span><span>${fmt(o.total)}</span></div>
-    <p class="order-detail__meta">Pago: ${paymentLabel(o.paymentMethod)}${o.address ? ` · Envío a: ${o.address}` : ''}</p>
+    <p class="order-detail__meta">Pago: ${paymentLabel(o.paymentMethod)}${shippingMeta ? ` · Envío a: ${shippingMeta}` : ''}</p>
+    ${o.customerRut ? `<p class="order-detail__meta">RUT: ${o.customerRut}</p>` : ''}
     ${receiptHtml}
     ${actionsHtml}
     <button type="button" class="btn-admin btn-admin--danger btn-full" data-delete-order style="margin-top:1.2rem">🗑 Eliminar pedido</button>

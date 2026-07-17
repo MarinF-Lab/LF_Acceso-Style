@@ -36,6 +36,21 @@ vuelta a tu sitio (y no a `localhost`):
 No hace falta configurar nada más: el proveedor de email de Supabase viene
 activado por defecto y alcanza para el volumen de una tienda chica.
 
+## Pedidos en vivo + notificaciones en el admin
+
+El panel admin se actualiza solo apenas un cliente confirma un pedido (sin
+recargar la página a mano), usando Supabase Realtime.
+
+1. Si corriste `schema.sql` desde cero, ya queda habilitado. Si tu proyecto
+   es anterior, corré `supabase/migrations/004_add_starken_shipping.sql`
+   (incluye `alter publication supabase_realtime add table orders;`).
+2. Alternativa por dashboard: **Database → Replication** → activá la tabla
+   `orders`.
+3. En `admin.html` → Configuración → **🔔 Activar notificaciones de pedidos
+   nuevos**, para que además llegue una notificación al dispositivo (celular
+   o computador) donde tengas la sesión abierta. Hay que activarlo una vez
+   por dispositivo/navegador (el navegador pedirá permiso).
+
 ## Envío automático de WhatsApp (opcional, Fase B)
 
 No es necesario para que la tienda funcione — hoy usa enlaces `wa.me`

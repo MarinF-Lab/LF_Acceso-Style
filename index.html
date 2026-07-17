@@ -24,10 +24,10 @@
     <div class="announce__track">
       <span data-content="announce1">Envío gratis desde $49.990</span><span class="dot">◆</span>
       <span data-content="announce2">Nueva temporada · Otoño/Invierno</span><span class="dot">◆</span>
-      <span data-content="announce3">Cambios gratis dentro de 30 días</span><span class="dot">◆</span>
+      <span data-content="announce3">Atención personalizada por WhatsApp</span><span class="dot">◆</span>
       <span data-content="announce1">Envío gratis desde $49.990</span><span class="dot">◆</span>
       <span data-content="announce2">Nueva temporada · Otoño/Invierno</span><span class="dot">◆</span>
-      <span data-content="announce3">Cambios gratis dentro de 30 días</span><span class="dot">◆</span>
+      <span data-content="announce3">Atención personalizada por WhatsApp</span><span class="dot">◆</span>
     </div>
   </div>
 
@@ -101,10 +101,6 @@
       </div>
       <div class="filters" id="filters">
         <button class="chip is-active" data-filter="all">Todo</button>
-        <button class="chip" data-filter="polera">Poleras</button>
-        <button class="chip" data-filter="poleron">Polerones</button>
-        <button class="chip" data-filter="pantalon">Pantalones</button>
-        <button class="chip" data-filter="chaqueta">Chaquetas</button>
       </div>
     </div>
 
@@ -130,7 +126,7 @@
   <!-- ── VENTAJAS ── -->
   <section class="perks">
     <div class="perk" data-content-visible="perk1Hidden"><span class="perk__ico gold">⚡</span><div><strong data-content="perk1Title">Despacho rápido</strong><span data-content="perk1Sub">24–48 h en RM</span></div></div>
-    <div class="perk" data-content-visible="perk2Hidden"><span class="perk__ico gold">↺</span><div><strong data-content="perk2Title">Cambios fáciles</strong><span data-content="perk2Sub">30 días gratis</span></div></div>
+    <div class="perk" data-content-visible="perk2Hidden"><span class="perk__ico gold">💬</span><div><strong data-content="perk2Title">Atención directa</strong><span data-content="perk2Sub">Por WhatsApp</span></div></div>
     <div class="perk" data-content-visible="perk3Hidden"><span class="perk__ico gold">🔒</span><div><strong data-content="perk3Title">Pago seguro</strong><span data-content="perk3Sub">Webpay & tarjetas</span></div></div>
     <div class="perk" data-content-visible="perk4Hidden"><span class="perk__ico gold">★</span><div><strong data-content="perk4Title">Calidad real</strong><span data-content="perk4Sub">Telas premium</span></div></div>
   </section>
@@ -162,7 +158,6 @@
       <div class="footer__col">
         <h4>Ayuda</h4>
         <a href="#">Envíos</a>
-        <a href="#">Cambios y devoluciones</a>
         <a href="#">Guía de tallas</a>
         <a href="#">Contacto</a>
       </div>
@@ -244,12 +239,13 @@
       <form id="checkoutForm1" class="checkout-form">
         <h3>Tus datos</h3>
         <div class="form-row">
-          <div class="form-group"><label>Nombre</label><input type="text" id="coName" required /></div>
+          <div class="form-group"><label>Nombre y apellido</label><input type="text" id="coName" required /></div>
           <div class="form-group"><label>Teléfono (WhatsApp)</label><input type="tel" id="coPhone" required placeholder="+56 9 xxxx xxxx" /></div>
         </div>
         <div class="form-group"><label>Email (opcional)</label><input type="email" id="coEmail" /></div>
         <details class="address-details" id="addressDetails">
-          <summary>Dirección de envío</summary>
+          <summary>Datos de envío</summary>
+          <div class="form-group"><label>RUT</label><input type="text" id="coRut" required placeholder="12.345.678-9" /></div>
           <div class="form-row">
             <div class="form-group"><label>Región</label>
               <select id="coRegion" required>
@@ -274,11 +270,31 @@
             </div>
             <div class="form-group"><label>Comuna</label><input type="text" id="coComuna" required /></div>
           </div>
-          <div class="form-row">
-            <div class="form-group"><label>Calle</label><input type="text" id="coStreet" required /></div>
-            <div class="form-group"><label>Número (casa/depto)</label><input type="text" id="coHouseNumber" required /></div>
+
+          <div class="form-group">
+            <label>¿Cómo prefieres recibir tu pedido?</label>
+            <div class="shipping-type-row">
+              <button type="button" class="chip shipping-type-btn is-active" data-shipping-type="domicilio">Domicilio</button>
+              <button type="button" class="chip shipping-type-btn" data-shipping-type="sucursal">Sucursal Starken</button>
+            </div>
           </div>
-          <div class="form-group"><label>Código postal (opcional)</label><input type="text" id="coZip" /></div>
+
+          <div id="shippingDomicilioFields">
+            <div class="form-row">
+              <div class="form-group"><label>Calle</label><input type="text" id="coStreet" required /></div>
+              <div class="form-group"><label>Número (casa/depto)</label><input type="text" id="coHouseNumber" required /></div>
+            </div>
+            <div class="form-group"><label>Descripción (opcional)</label><input type="text" id="coAddressDesc" placeholder="Ej: casa azul, portón negro" /></div>
+            <button type="button" class="maps-link" id="mapsLinkDomicilio">📍 Ver mi dirección en Google Maps</button>
+          </div>
+
+          <div id="shippingSucursalFields" hidden>
+            <div class="form-group">
+              <label>Sucursal de Starken</label>
+              <input type="text" id="coStarkenBranch" placeholder="Ej: Starken Parral" />
+            </div>
+            <button type="button" class="maps-link" id="mapsLinkSucursal">📍 Buscar la sucursal más cercana en Google Maps</button>
+          </div>
         </details>
         <button type="submit" class="btn btn--primary btn--full">Continuar a pago</button>
       </form>

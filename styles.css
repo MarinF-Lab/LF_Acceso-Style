@@ -752,9 +752,10 @@ svg { width: 22px; height: 22px; }
 
 .checkout-form h3 { font-family: var(--display); font-size: 1.15rem; margin-bottom: 1.2rem; }
 .checkout-form .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
-.checkout-form .form-group { margin-bottom: .9rem; display: flex; flex-direction: column; gap: .35rem; }
+.checkout-form .form-group { margin-bottom: .9rem; display: flex; flex-direction: column; gap: .35rem; min-width: 0; }
 .checkout-form label { font-size: .8rem; color: var(--muted); font-weight: 600; }
 .checkout-form input, .checkout-form select {
+  width: 100%; max-width: 100%;
   background: var(--bg); border: 1px solid var(--line); color: var(--text);
   padding: .7rem .9rem; border-radius: var(--radius-sm); font-size: .9rem; font-family: var(--font);
 }
@@ -770,6 +771,14 @@ svg { width: 22px; height: 22px; }
 .address-details[open] summary::after { content: '▴'; }
 .address-details[open] summary { border-bottom: 1px solid var(--line); margin-bottom: .9rem; }
 .address-details .form-row:last-of-type, .address-details .form-group:last-child { margin-bottom: .9rem; }
+.shipping-type-row { display: flex; gap: .6rem; }
+.shipping-type-row .chip { flex: 1; text-align: center; }
+.maps-link {
+  display: block; width: 100%; background: none; border: 1px dashed var(--line); color: var(--blue);
+  padding: .55rem; border-radius: var(--radius-sm); font-size: .8rem; font-weight: 600;
+  cursor: pointer; margin-bottom: .9rem; text-align: center;
+}
+.maps-link:hover { border-color: var(--blue); }
 
 .pay-methods { display: flex; gap: .6rem; margin-bottom: 1rem; }
 .pay-method {

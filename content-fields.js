@@ -9,7 +9,7 @@ export const CONTENT_SECTIONS = [
     fields: [
       { key: 'announce1', label: 'Mensaje 1', default: 'Envío gratis desde $49.990' },
       { key: 'announce2', label: 'Mensaje 2', default: 'Nueva temporada · Otoño/Invierno' },
-      { key: 'announce3', label: 'Mensaje 3', default: 'Cambios gratis dentro de 30 días' },
+      { key: 'announce3', label: 'Mensaje 3', default: 'Atención personalizada por WhatsApp' },
     ],
   },
   {
@@ -49,8 +49,8 @@ export const CONTENT_SECTIONS = [
       { key: 'perk1Title', label: 'Ventaja 1 — título', default: 'Despacho rápido' },
       { key: 'perk1Sub', label: 'Ventaja 1 — texto', default: '24–48 h en RM' },
       { key: 'perk2Hidden', label: 'Ocultar ventaja 2', toggle: true, default: false },
-      { key: 'perk2Title', label: 'Ventaja 2 — título', default: 'Cambios fáciles' },
-      { key: 'perk2Sub', label: 'Ventaja 2 — texto', default: '30 días gratis' },
+      { key: 'perk2Title', label: 'Ventaja 2 — título', default: 'Atención directa' },
+      { key: 'perk2Sub', label: 'Ventaja 2 — texto', default: 'Por WhatsApp' },
       { key: 'perk3Hidden', label: 'Ocultar ventaja 3', toggle: true, default: false },
       { key: 'perk3Title', label: 'Ventaja 3 — título', default: 'Pago seguro' },
       { key: 'perk3Sub', label: 'Ventaja 3 — texto', default: 'Webpay & tarjetas' },

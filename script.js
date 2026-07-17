@@ -1,6 +1,6 @@
 import { supabase } from './supabase-config.js';
 import { applyContent } from './content-fields.js';
-import { DEFAULT_CATEGORIES, renderCategoryCards } from './categories.js';
+import { DEFAULT_CATEGORIES, DEFAULT_PRODUCT_TYPES, SIZES, renderCategoryCards } from './categories.js';
 
 /* ===================================================================
    UI base (menú móvil, scroll nav, newsletter)
@@ -135,6 +135,23 @@ async function loadCategories() {
   }
 }
 
+async function loadProductTypes() {
+  const filters = document.getElementById('filters');
+  const renderChips = (types) => {
+    const sorted = [...types].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    filters.innerHTML = `<button class="chip is-active" data-filter="all">Todo</button>` +
+      sorted.map(t => `<button class="chip" data-filter="${t.id}">${t.name}</button>`).join('');
+  };
+  try {
+    const { data, error } = await withTimeout(supabase.from('product_types').select('*'), 8000, 'product_types');
+    if (error) throw error;
+    renderChips(data.length ? data : DEFAULT_PRODUCT_TYPES);
+  } catch (err) {
+    console.error('No se pudieron cargar los tipos de producto (se usan los por defecto):', err);
+    renderChips(DEFAULT_PRODUCT_TYPES);
+  }
+}
+
 /* ===================================================================
    CATÁLOGO
    =================================================================== */
@@ -229,7 +246,7 @@ function openQuickView(productId) {
 
   const sizeStock = p.sizeStock || {};
   const sizesRow = document.getElementById('qvSizes');
-  const sizes = Object.keys(sizeStock).length ? Object.keys(sizeStock) : ['S', 'M', 'L', 'XL'];
+  const sizes = Object.keys(sizeStock).length ? Object.keys(sizeStock) : SIZES;
   sizesRow.innerHTML = sizes.map(s => {
     const available = sizeStock[s] === undefined ? true : sizeStock[s] > 0;
     return `<button type="button" class="size-btn" data-size="${s}" ${available ? '' : 'disabled'}>${s}</button>`;
@@ -535,10 +552,11 @@ document.getElementById('payMethods').addEventListener('click', (e) => {
 function bankBoxHtml() {
   const s = storeSettings;
   const rows = [];
-  if (s.bankName) rows.push(`<p><strong>Banco:</strong> ${s.bankName}</p>`);
-  if (s.bankAccountType || s.bankAccountNumber) rows.push(`<p><strong>${s.bankAccountType || 'Cuenta'}:</strong> ${s.bankAccountNumber || ''}</p>`);
-  if (s.bankRut) rows.push(`<p><strong>RUT:</strong> ${s.bankRut}</p>`);
-  if (s.bankHolder) rows.push(`<p><strong>Nombre:</strong> ${s.bankHolder}</p>`);
+  if (s.bankHolder) rows.push(`<p><strong>${s.bankHolder}</strong></p>`);
+  if (s.bankRut) rows.push(`<p>${s.bankRut}</p>`);
+  if (s.bankName) rows.push(`<p>${s.bankName}</p>`);
+  if (s.bankAccountType) rows.push(`<p>${s.bankAccountType}</p>`);
+  if (s.bankAccountNumber) rows.push(`<p>${s.bankAccountNumber}</p>`);
   return `<div class="info-box">${rows.join('') || '<p>Datos bancarios no configurados aún.</p>'}</div>
     <p class="pay-note">Realiza la transferencia y guarda el comprobante, adjúntalo para poder confirmar tu pedido.</p>
     <div class="receipt-upload">
@@ -576,15 +594,59 @@ function renderOrderSummaryMini() {
 
 function orderPrefix() { return 'LF'; }
 
-function buildAddressString() {
-  const region = document.getElementById('coRegion').value.trim();
-  const comuna = document.getElementById('coComuna').value.trim();
+/* ===================================================================
+   ENVÍO — Domicilio / Sucursal Starken
+   =================================================================== */
+let shippingType = 'domicilio';
+
+document.querySelectorAll('.shipping-type-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.shipping-type-btn').forEach(b => b.classList.remove('is-active'));
+    btn.classList.add('is-active');
+    shippingType = btn.dataset.shippingType;
+    const isDomicilio = shippingType === 'domicilio';
+    document.getElementById('shippingDomicilioFields').hidden = !isDomicilio;
+    document.getElementById('shippingSucursalFields').hidden = isDomicilio;
+    document.getElementById('coStreet').required = isDomicilio;
+    document.getElementById('coHouseNumber').required = isDomicilio;
+    document.getElementById('coStarkenBranch').required = !isDomicilio;
+  });
+});
+
+// Links a Google Maps sin necesitar una API key de pago: abren una búsqueda
+// directa en vez de un mapa embebido/autocompletado.
+document.getElementById('mapsLinkDomicilio').addEventListener('click', () => {
   const street = document.getElementById('coStreet').value.trim();
   const houseNumber = document.getElementById('coHouseNumber').value.trim();
-  const zip = document.getElementById('coZip').value.trim();
-  let out = `${street} ${houseNumber}, ${comuna}, ${region}`;
-  if (zip) out += ` (CP ${zip})`;
-  return out;
+  const comuna = document.getElementById('coComuna').value.trim();
+  const region = document.getElementById('coRegion').value;
+  const query = `${street} ${houseNumber}, ${comuna}, ${region}, Chile`.trim();
+  window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, '_blank');
+});
+document.getElementById('mapsLinkSucursal').addEventListener('click', () => {
+  const comuna = document.getElementById('coComuna').value.trim();
+  window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`Starken ${comuna}, Chile`.trim())}`, '_blank');
+});
+
+function buildShippingFields() {
+  const region = document.getElementById('coRegion').value.trim();
+  const comuna = document.getElementById('coComuna').value.trim();
+  let shippingDetail;
+  if (shippingType === 'domicilio') {
+    const street = document.getElementById('coStreet').value.trim();
+    const houseNumber = document.getElementById('coHouseNumber').value.trim();
+    const desc = document.getElementById('coAddressDesc').value.trim();
+    shippingDetail = `${street} ${houseNumber}`.trim() + (desc ? ` - ${desc}` : '');
+  } else {
+    shippingDetail = document.getElementById('coStarkenBranch').value.trim();
+  }
+  return {
+    customerRut: document.getElementById('coRut').value.trim(),
+    region,
+    comuna,
+    shippingType,
+    shippingDetail,
+  };
 }
 
 document.getElementById('checkoutForm2').addEventListener('submit', async (e) => {
@@ -624,7 +686,7 @@ document.getElementById('checkoutForm2').addEventListener('submit', async (e) =>
       customerName: document.getElementById('coName').value.trim(),
       customerPhone: document.getElementById('coPhone').value.trim(),
       customerEmail: document.getElementById('coEmail').value.trim(),
-      address: buildAddressString(),
+      ...buildShippingFields(),
       items: cart.map(i => ({ id: i.id, name: i.name, size: i.size, qty: i.qty, price: i.price, imageUrl: i.imageUrl })),
       total: cartTotal(),
       paymentMethod: selectedPayMethod,
@@ -677,6 +739,7 @@ document.getElementById('continueShopping').addEventListener('click', () => {
   goToStep(1);
   document.getElementById('checkoutForm1').reset();
   document.getElementById('checkoutForm2').reset();
+  document.querySelector('.shipping-type-btn[data-shipping-type="domicilio"]').click();
 });
 
 /* ===================================================================
@@ -700,7 +763,7 @@ if (!EDITOR_MODE && 'serviceWorker' in navigator) {
   if (!EDITOR_MODE) loadPageContent();
   loadCategories();
   try {
-    await Promise.all([loadProducts(), loadSettings()]);
+    await Promise.all([loadProducts(), loadSettings(), loadProductTypes()]);
     renderCatalog();
     applySocialLinks();
   } catch (err) {
