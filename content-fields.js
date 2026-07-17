@@ -20,6 +20,11 @@ export const CONTENT_SECTIONS = [
       { key: 'heroHighlight', label: 'Palabra a destacar (debe escribirse igual que en el título)', special: true, default: 'estilo' },
       { key: 'heroHighlightColor', label: 'Color de la palabra destacada', color: true, special: true, default: '#d6b25e' },
       { key: 'heroSub', label: 'Subtítulo', long: true, default: 'Streetwear y básicos de calidad en tonos oscuros. Piezas que combinan con todo y no pasan de moda.' },
+      { key: 'heroBtnPrimary', label: 'Botón principal', default: 'Comprar colección' },
+      { key: 'heroBtnGhost', label: 'Botón secundario', default: 'Ver lookbook' },
+      { key: 'heroStat1', label: 'Dato rápido 1', default: '+120 prendas' },
+      { key: 'heroStat2', label: 'Dato rápido 2', default: 'Envío a todo Chile' },
+      { key: 'heroStat3', label: 'Dato rápido 3', default: 'Pago seguro' },
     ],
   },
   {

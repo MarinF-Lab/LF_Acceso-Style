@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" translate="no">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LF Acceso Style — Ropa urbana & casual</title>
   <meta name="description" content="LF Acceso Style: streetwear y ropa casual para hombre y unisex. Piezas atemporales en tonos oscuros." />
   <meta name="theme-color" content="#0b0d12" />
+  <meta name="google" content="notranslate" />
   <link rel="icon" type="image/png" href="assets/logo-icon-cropped.png" />
   <link rel="manifest" href="manifest-store.json" />
   <link rel="apple-touch-icon" href="assets/icon-192.png" />
@@ -75,15 +76,15 @@
       <h1 class="hero__title" data-content-title>Tu acceso al <span class="gold">estilo</span>.</h1>
       <p class="hero__sub" data-content="heroSub">Streetwear y básicos de calidad en tonos oscuros. Piezas que combinan con todo y no pasan de moda.</p>
       <div class="hero__cta">
-        <a href="#catalogo" class="btn btn--primary">Comprar colección</a>
-        <a href="#lookbook" class="btn btn--ghost">Ver lookbook</a>
+        <a href="#catalogo" class="btn btn--primary" data-content="heroBtnPrimary">Comprar colección</a>
+        <a href="#lookbook" class="btn btn--ghost" data-content="heroBtnGhost">Ver lookbook</a>
       </div>
       <div class="hero__meta">
-        <span><strong>+120</strong> prendas</span>
+        <span data-content="heroStat1">+120 prendas</span>
         <span class="sep"></span>
-        <span><strong>Envío</strong> a todo Chile</span>
+        <span data-content="heroStat2">Envío a todo Chile</span>
         <span class="sep"></span>
-        <span><strong>Pago</strong> seguro</span>
+        <span data-content="heroStat3">Pago seguro</span>
       </div>
     </div>
   </section>
@@ -146,9 +147,9 @@
         </span>
         <p data-content="footerDesc">Ropa urbana y casual para hombre y unisex. Hecha para durar.</p>
         <div class="social">
-          <a href="#" aria-label="Instagram">IG</a>
-          <a href="#" aria-label="TikTok">TT</a>
-          <a href="#" aria-label="WhatsApp">WA</a>
+          <a href="#" id="socialInstagram" target="_blank" rel="noopener" aria-label="Instagram">IG</a>
+          <a href="#" id="socialTiktok" target="_blank" rel="noopener" aria-label="TikTok">TT</a>
+          <a href="#" id="socialWhatsapp" target="_blank" rel="noopener" aria-label="WhatsApp">WA</a>
         </div>
       </div>
       <div class="footer__col">

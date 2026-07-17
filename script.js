@@ -702,6 +702,7 @@ if (!EDITOR_MODE && 'serviceWorker' in navigator) {
   try {
     await Promise.all([loadProducts(), loadSettings()]);
     renderCatalog();
+    applySocialLinks();
   } catch (err) {
     if (!EDITOR_MODE) {
       grid.innerHTML = `<p class="catalog__empty">No se pudo conectar con la tienda. Si eres el administrador: revisa que <code>supabase-config.js</code> tenga las claves reales de tu proyecto Supabase (hoy tiene valores de ejemplo).</p>`;
@@ -709,3 +710,14 @@ if (!EDITOR_MODE && 'serviceWorker' in navigator) {
   }
   renderCart();
 })();
+
+function applySocialLinks() {
+  const links = {
+    socialInstagram: document.getElementById('socialInstagram'),
+    socialTiktok: document.getElementById('socialTiktok'),
+    socialWhatsapp: document.getElementById('socialWhatsapp'),
+  };
+  Object.entries(links).forEach(([key, el]) => {
+    if (el && storeSettings[key]) el.href = storeSettings[key];
+  });
+}

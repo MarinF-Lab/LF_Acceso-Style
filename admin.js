@@ -690,6 +690,9 @@ async function loadSettings() {
   document.getElementById('sBankHolder').value = storeSettings.bankHolder || '';
   document.getElementById('sBankEmail').value = storeSettings.bankEmail || '';
   document.getElementById('sMpLink').value = storeSettings.mpLink || '';
+  document.getElementById('sSocialInstagram').value = storeSettings.socialInstagram || '';
+  document.getElementById('sSocialTiktok').value = storeSettings.socialTiktok || '';
+  document.getElementById('sSocialWhatsapp').value = storeSettings.socialWhatsapp || '';
 }
 
 document.getElementById('settingsForm').addEventListener('submit', async (e) => {
@@ -704,6 +707,9 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
     bankHolder: document.getElementById('sBankHolder').value.trim(),
     bankEmail: document.getElementById('sBankEmail').value.trim(),
     mpLink: document.getElementById('sMpLink').value.trim(),
+    socialInstagram: document.getElementById('sSocialInstagram').value.trim(),
+    socialTiktok: document.getElementById('sSocialTiktok').value.trim(),
+    socialWhatsapp: document.getElementById('sSocialWhatsapp').value.trim(),
   };
   storeSettings = { ...storeSettings, ...data };
   const { error } = await supabase.from('settings').upsert({ id: 'store', data: storeSettings });
