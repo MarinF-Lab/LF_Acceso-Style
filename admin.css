@@ -331,4 +331,9 @@ textarea { resize: vertical; }
   .admin-table td[colspan] { display: block; text-align: center; }
   .admin-table td[colspan]::before { content: none; }
   .admin-table img.thumb { margin-left: auto; }
+
+  /* Fila del detalle del pedido, insertada justo debajo de la fila
+     seleccionada (ver positionOrderDetail en admin.js). */
+  .order-detail-row td[colspan] { text-align: left; padding: 0; }
+  .order-detail-row .order-detail { margin: .6rem 0; }
 }

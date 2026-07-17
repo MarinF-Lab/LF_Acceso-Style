@@ -489,6 +489,11 @@ function orderRowHtml(o) {
 }
 
 function renderOrdersTable() {
+  // #orderDetail puede estar montado dentro de una fila de una tabla (en
+  // mobile) que estamos a punto de destruir con innerHTML — lo rescatamos
+  // a su lugar de siempre antes de reconstruir las filas.
+  document.querySelector('.orders-layout')?.appendChild(document.getElementById('orderDetail'));
+
   // Pedidos más nuevos arriba (allOrders ya viene ordenado así desde la
   // consulta); se separan en "activos" (por confirmar/en proceso) e
   // "historial" (entregados o rechazados).
@@ -574,6 +579,7 @@ function renderOrderDetail() {
     <p class="order-detail__meta">Pago: ${paymentLabel(o.paymentMethod)}${o.address ? ` · Envío a: ${o.address}` : ''}</p>
     ${receiptHtml}
     ${actionsHtml}
+    <button type="button" class="btn-admin btn-admin--danger btn-full" data-delete-order style="margin-top:1.2rem">🗑 Eliminar pedido</button>
   `;
 
   el.querySelector('[data-accept]')?.addEventListener('click', () => {
@@ -587,7 +593,48 @@ function renderOrderDetail() {
     updateOrderStatus(o, 'rechazado');
   });
   el.querySelector('[data-next]')?.addEventListener('click', (e) => updateOrderStatus(o, e.target.dataset.next));
+  el.querySelector('[data-delete-order]')?.addEventListener('click', () => confirmDeleteOrder(o.id));
+
+  positionOrderDetail();
 }
+
+function confirmDeleteOrder(id) {
+  if (!confirm('¿Eliminar este pedido? Esta acción no se puede deshacer.')) return;
+  supabase.from('orders').delete().eq('id', id).then(async ({ error }) => {
+    if (error) { toast('Error al eliminar: ' + error.message); return; }
+    if (selectedOrderId === id) selectedOrderId = null;
+    await refreshOrders();
+    renderOrdersTable();
+    renderOrderDetail();
+    renderDashboard();
+    toast('Pedido eliminado');
+  });
+}
+
+/* En mobile, el detalle del pedido se muestra justo debajo de la fila
+   seleccionada (dentro de la misma tabla) en vez de al final de toda la
+   lista. En escritorio vuelve a su lugar habitual, como panel lateral. */
+function positionOrderDetail() {
+  const detailEl = document.getElementById('orderDetail');
+  document.querySelectorAll('.order-detail-row').forEach(tr => tr.remove());
+
+  const isMobile = window.matchMedia('(max-width: 900px)').matches;
+  if (isMobile && selectedOrderId) {
+    const row = document.querySelector(`#ordersTableActive tr[data-id="${selectedOrderId}"], #ordersTableHistory tr[data-id="${selectedOrderId}"]`);
+    if (row) {
+      const wrapperRow = document.createElement('tr');
+      wrapperRow.className = 'order-detail-row';
+      const td = document.createElement('td');
+      td.colSpan = 6;
+      td.appendChild(detailEl);
+      wrapperRow.appendChild(td);
+      row.after(wrapperRow);
+      return;
+    }
+  }
+  document.querySelector('.orders-layout').appendChild(detailEl);
+}
+window.addEventListener('resize', () => { if (document.getElementById('view-orders')?.classList.contains('active')) positionOrderDetail(); });
 
 async function updateOrderStatus(order, newStatus) {
   const { error } = await supabase.from('orders').update({ status: newStatus, updatedAt: Date.now() }).eq('id', order.id);
