@@ -53,7 +53,7 @@ const ORDER_STATUSES = [
 ];
 const STATUS_MESSAGES = {
   armando:   (o) => `Hola ${o.customerName}! 👋 Tu pedido #${o.orderNumber} de LF Acceso Style fue *aceptado* y está *en preparación*. Te avisamos apenas salga en camino.`,
-  en_camino: (o) => `Hola ${o.customerName}! 🚚 Tu pedido #${o.orderNumber} va *en camino*. Puedes revisar los datos y el código de seguimiento de tu pedido en tu correo. Si no recibiste el correo, contáctanos para recibir el comprobante y el estado de tu pedido.`,
+  en_camino: (o) => `Hola ${o.customerName}! Tu pedido va en camino. Puedes revisar los datos y el código de seguimiento de tu pedido en tu correo. Si no recibiste el correo, contáctanos para recibir el comprobante y el estado de tu pedido.`,
   entregado: (o) => `Hola ${o.customerName}! 🎉 Tu pedido #${o.orderNumber} fue *entregado*. Gracias por confiar en LF Acceso Style.`,
   rechazado: (o) => `Hola ${o.customerName}, no pudimos confirmar el pago de tu pedido #${o.orderNumber} — revisa que el comprobante de transferencia esté correcto y respóndenos por este medio para resolverlo.`,
 };
