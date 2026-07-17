@@ -121,6 +121,7 @@ async function showAdmin() {
     renderCategoriesTable();
     renderProductTypesTable();
     populateProductFormSelects();
+    subscribeToNewOrders();
   } catch (err) {
     console.error(err);
     toast('No se pudo conectar con Supabase. Revisa supabase-config.js (¿tiene tus claves reales?).');
@@ -626,6 +627,42 @@ async function refreshOrders() {
   allOrders = data;
 }
 
+/* Actualiza la lista de pedidos sola apenas un cliente confirma uno nuevo
+   (Supabase Realtime), sin tener que recargar la página a mano. Requiere
+   que la tabla "orders" esté agregada a la publicación supabase_realtime
+   (ver supabase/migrations/004_add_starken_shipping.sql). */
+let realtimeSubscribed = false;
+function subscribeToNewOrders() {
+  if (realtimeSubscribed) return;
+  realtimeSubscribed = true;
+  supabase
+    .channel('orders-inserts')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, async () => {
+      await refreshOrders();
+      renderOrdersTable();
+      renderOrderDetail();
+      renderDashboard();
+      toast('📦 Llegó un pedido nuevo');
+      notifyNewOrder();
+    })
+    .subscribe();
+}
+
+async function notifyNewOrder() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const reg = await navigator.serviceWorker.getRegistration();
+  const options = { body: 'Entra al panel para revisarlo.', icon: 'assets/icon-192.png' };
+  if (reg) reg.showNotification('Nuevo pedido — LF Acceso Style', options);
+  else new Notification('Nuevo pedido — LF Acceso Style', options);
+}
+
+async function requestOrderNotifications() {
+  if (!('Notification' in window)) { toast('Tu navegador no soporta notificaciones.'); return; }
+  const perm = await Notification.requestPermission();
+  toast(perm === 'granted' ? 'Notificaciones activadas ✓' : 'No se activaron las notificaciones.');
+}
+document.getElementById('enableNotificationsBtn')?.addEventListener('click', requestOrderNotifications);
+
 function paymentLabel(method) {
   return method === 'mercadopago' ? 'Mercado Pago' : method === 'transfer' ? 'Transferencia' : method || '—';
 }
@@ -688,9 +725,22 @@ function renderOrderDetail() {
       </div>
     </div>`).join('');
 
-  const supplierMsg = `Nuevo pedido #${o.orderNumber} para armar:\n` +
-    (o.items || []).map(it => `• ${it.name} — Talla ${it.size} — Cant. ${it.qty}${it.imageUrl ? `\n  Imagen: ${it.imageUrl}` : ''}`).join('\n') +
-    `\n\nCliente: ${o.customerName}${o.address ? `\nDirección: ${o.address}` : ''}`;
+  // Formato pedido por el proveedor (arma los envíos por Starken): primero
+  // la lista de productos (con el link de imagen arriba de cada uno), luego
+  // los datos del cliente y del envío.
+  const shippingDetailLine = o.shippingDetail || o.address || '';
+  const supplierMsg = (o.items || []).map((it, idx) =>
+    `${it.imageUrl ? it.imageUrl + '\n' : ''}${idx + 1}. "${it.name}" - Talla ${it.size} - Cant. ${it.qty}`
+  ).join('\n') +
+    `\nNombre y Apellido: ${o.customerName}` +
+    `\nTeléfono: ${o.customerPhone || ''}` +
+    `\nEmail: ${o.customerEmail || ''}` +
+    `\nRegión y Comuna: ${o.region || ''}, ${o.comuna || ''}` +
+    `\nDomicilio:/Sucursal de Starken: ${shippingDetailLine}`;
+
+  const shippingMeta = o.shippingDetail
+    ? `${o.region || ''}, ${o.comuna || ''} — ${o.shippingType === 'sucursal' ? 'Sucursal: ' : ''}${o.shippingDetail}`
+    : o.address;
 
   const receiptHtml = o.receiptUrl
     ? `<a class="receipt-link" href="${o.receiptUrl}" target="_blank" rel="noopener">📎 Ver comprobante de transferencia</a>`
@@ -730,7 +780,8 @@ function renderOrderDetail() {
     <p class="order-detail__meta">${o.customerName} · ${o.customerPhone || 'sin teléfono'} · ${new Date(o.createdAt).toLocaleString('es-CL')}</p>
     ${itemsHtml}
     <div class="order-total"><span>Total</span><span>${fmt(o.total)}</span></div>
-    <p class="order-detail__meta">Pago: ${paymentLabel(o.paymentMethod)}${o.address ? ` · Envío a: ${o.address}` : ''}</p>
+    <p class="order-detail__meta">Pago: ${paymentLabel(o.paymentMethod)}${shippingMeta ? ` · Envío a: ${shippingMeta}` : ''}</p>
+    ${o.customerRut ? `<p class="order-detail__meta">RUT: ${o.customerRut}</p>` : ''}
     ${receiptHtml}
     ${actionsHtml}
     <button type="button" class="btn-admin btn-admin--danger btn-full" data-delete-order style="margin-top:1.2rem">🗑 Eliminar pedido</button>

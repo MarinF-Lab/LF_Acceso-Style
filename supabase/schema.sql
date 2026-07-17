@@ -87,7 +87,12 @@ create table if not exists orders (
   "customerName" text,
   "customerPhone" text,
   "customerEmail" text,
-  address text,
+  "customerRut" text,
+  region text,
+  comuna text,
+  "shippingType" text, -- 'domicilio' | 'sucursal'
+  "shippingDetail" text, -- calle+número+descripción, o el nombre de la sucursal Starken
+  address text, -- formato antiguo, se mantiene solo para pedidos ya creados
   items jsonb not null default '[]'::jsonb,
   total numeric not null default 0,
   "paymentMethod" text,
@@ -109,6 +114,10 @@ create policy "orders_select_public" on orders for select using (true);
 create policy "orders_insert_own" on orders for insert with check (auth.uid() = "userId");
 create policy "orders_update_public" on orders for update using (true) with check (true);
 create policy "orders_delete_public" on orders for delete using (true);
+
+-- Habilita Realtime en orders para que el panel admin se refresque y
+-- muestre una notificación apenas llega un pedido nuevo.
+alter publication supabase_realtime add table orders;
 
 -- ----------------------------------------------------------------------------
 -- CONFIGURACIÓN (settings/store y settings/content de Firestore)
