@@ -1,0 +1,16 @@
+{
+  "id": "./admin.html",
+  "name": "A.S Admin",
+  "short_name": "A.S Admin",
+  "description": "Panel de administración de LF Acceso Style.",
+  "start_url": "./admin.html",
+  "scope": "./admin.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0d12",
+  "theme_color": "#0b0d12",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
