@@ -801,14 +801,16 @@ function renderOrderDetail() {
   // el texto ya no lleva el link de la imagen, solo talla/cantidad y los
   // datos del cliente y del envío.
   const shippingDetailLine = o.shippingDetail || o.address || '';
+  const shippingLabel = o.shippingType === 'sucursal' ? 'Sucursal de Starken' : 'Domicilio';
   const supplierMsg = (o.items || []).map((it, idx) =>
     `${idx + 1}. Talla: ${it.size} - Cant: ${it.qty}`
   ).join('\n') +
-    `\nNombre y Apellido: ${o.customerName}` +
+    `\nNombre: ${o.customerName}` +
     `\nTeléfono: ${o.customerPhone || ''}` +
     `\nEmail: ${o.customerEmail || ''}` +
+    `\nRUT: ${o.customerRut || ''}` +
     `\nRegión y Comuna: ${o.region || ''}, ${o.comuna || ''}` +
-    `\nDomicilio:/Sucursal de Starken: ${shippingDetailLine}`;
+    `\n${shippingLabel}: ${shippingDetailLine}`;
 
   const shippingMeta = o.shippingDetail
     ? `${o.region || ''}, ${o.comuna || ''} — ${o.shippingType === 'sucursal' ? 'Sucursal: ' : ''}${o.shippingDetail}`
