@@ -51,8 +51,18 @@ const ORDER_STATUSES = [
   { id: 'en_camino',  label: 'En camino' },
   { id: 'entregado',  label: 'Entregado' },
 ];
+/* Arma "producto - talla x", "producto2 - talla y" y "producto3 - talla z"
+   (coma entre todos menos el último, "y" antes del último; con solo dos
+   productos va directo "a" y "b" sin coma). */
+function formatOrderItemsList(items) {
+  const parts = (items || []).map(it => `"${it.name} - talla ${it.size}"`);
+  if (parts.length <= 1) return parts.join('');
+  if (parts.length === 2) return parts.join(' y ');
+  return `${parts.slice(0, -1).join(', ')} y ${parts[parts.length - 1]}`;
+}
+
 const STATUS_MESSAGES = {
-  armando:   (o) => `Hola ${o.customerName}! 👋 Tu pedido #${o.orderNumber} de LF Acceso Style fue *aceptado* y está *en preparación*. Te avisamos apenas salga en camino.`,
+  armando:   (o) => `Hola ${o.customerName}! Tu pedido ${formatOrderItemsList(o.items)} de LF Acceso Style fue aceptado y está en preparación. Te avisamos apenas salga en camino.`,
   en_camino: (o) => `Hola ${o.customerName}! Tu pedido va en camino. Puedes revisar los datos y el código de seguimiento de tu pedido en tu correo. Si no recibiste el correo, contáctanos para recibir el comprobante y el estado de tu pedido.`,
   entregado: (o) => `Hola ${o.customerName}! 🎉 Tu pedido #${o.orderNumber} fue *entregado*. Gracias por confiar en LF Acceso Style.`,
   rechazado: (o) => `Hola ${o.customerName}, no pudimos confirmar el pago de tu pedido #${o.orderNumber} — revisa que el comprobante de transferencia esté correcto y respóndenos por este medio para resolverlo.`,
@@ -824,6 +834,7 @@ function renderOrderDetail() {
   } else if (o.status === 'armando') {
     actionsHtml = `
       <div class="order-actions">
+        <button type="button" class="btn-admin btn-full" data-prepare-supplier>📦 Preparar pedido con el proveedor</button>
         <button type="button" class="btn-admin btn-admin--primary btn-full" data-next="en_camino">🚚 Pedido en camino</button>
       </div>`;
   } else if (o.status === 'en_camino') {
@@ -850,9 +861,12 @@ function renderOrderDetail() {
   `;
 
   el.querySelector('[data-accept]')?.addEventListener('click', () => {
-    // Al aceptar: avisa al cliente (pedido aceptado y en preparación) y
-    // manda las specs al proveedor, en un solo paso.
+    // Al aceptar: solo avisa al cliente (pedido aceptado y en preparación).
+    // El envío al proveedor queda en su propio botón ("Preparar pedido con
+    // el proveedor"), disponible una vez que el pedido pasa a "armando".
     updateOrderStatus(o, 'armando');
+  });
+  el.querySelector('[data-prepare-supplier]')?.addEventListener('click', () => {
     sendToSupplier(o, supplierMsg);
   });
   el.querySelector('[data-reject]')?.addEventListener('click', () => {
