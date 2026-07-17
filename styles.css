@@ -780,6 +780,9 @@ svg { width: 22px; height: 22px; }
 }
 .maps-link:hover { border-color: var(--blue); }
 
+.address-map { width: 100%; height: 220px; border-radius: var(--radius-sm); border: 1px solid var(--line); margin-bottom: .5rem; overflow: hidden; background: var(--bg); }
+.map-hint { font-size: .78rem; color: var(--muted); margin: 0 0 .9rem; }
+
 .pay-methods { display: flex; gap: .6rem; margin-bottom: 1rem; }
 .pay-method {
   flex: 1; padding: .8rem; border-radius: var(--radius-sm); border: 1px solid var(--line);

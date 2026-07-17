@@ -492,6 +492,9 @@ function openCheckout() {
   checkoutOverlay.classList.add('open');
   document.body.style.overflow = 'hidden';
   goToStep(1);
+  if (document.getElementById('addressDetails').open) {
+    setTimeout(() => addressMap && addressMap.invalidateSize(), 60);
+  }
 }
 function closeCheckout() {
   checkoutOverlay.classList.remove('open');
@@ -527,10 +530,9 @@ document.getElementById('backToStep1').addEventListener('click', () => goToStep(
 function renderPaymentMethods() {
   const wrap = document.getElementById('payMethods');
   const hasTransfer = storeSettings.bankName || storeSettings.bankAccountNumber;
-  const hasMp = storeSettings.mpLink;
   wrap.querySelectorAll('.pay-method').forEach(btn => {
     const method = btn.dataset.method;
-    btn.disabled = (method === 'transfer' && !hasTransfer) || (method === 'mercadopago' && !hasMp);
+    btn.disabled = method === 'transfer' && !hasTransfer;
     btn.classList.remove('is-active');
   });
   document.getElementById('payDetail').innerHTML = '';
@@ -546,17 +548,17 @@ document.getElementById('payMethods').addEventListener('click', (e) => {
   btn.classList.add('is-active');
   selectedPayMethod = btn.dataset.method;
   renderPaymentDetail(selectedPayMethod);
-  document.getElementById('confirmOrderBtn').disabled = false;
+  document.getElementById('confirmOrderBtn').disabled = selectedPayMethod === 'mercadopago';
 });
 
 function bankBoxHtml() {
   const s = storeSettings;
   const rows = [];
   if (s.bankHolder) rows.push(`<p><strong>${s.bankHolder}</strong></p>`);
-  if (s.bankRut) rows.push(`<p>${s.bankRut}</p>`);
-  if (s.bankName) rows.push(`<p>${s.bankName}</p>`);
-  if (s.bankAccountType) rows.push(`<p>${s.bankAccountType}</p>`);
-  if (s.bankAccountNumber) rows.push(`<p>${s.bankAccountNumber}</p>`);
+  if (s.bankRut) rows.push(`<p>RUT: ${s.bankRut}</p>`);
+  if (s.bankName) rows.push(`<p>Banco: ${s.bankName}</p>`);
+  if (s.bankAccountType) rows.push(`<p>Tipo de cuenta: ${s.bankAccountType}</p>`);
+  if (s.bankAccountNumber) rows.push(`<p>N° de cuenta: ${s.bankAccountNumber}</p>`);
   return `<div class="info-box">${rows.join('') || '<p>Datos bancarios no configurados aún.</p>'}</div>
     <p class="pay-note">Realiza la transferencia y guarda el comprobante, adjúntalo para poder confirmar tu pedido.</p>
     <div class="receipt-upload">
@@ -580,7 +582,7 @@ function renderPaymentDetail(method) {
         : 'Sube una foto o PDF del comprobante para confirmar tu pedido.';
     });
   } else if (method === 'mercadopago') {
-    el.innerHTML = `<a class="pay-link-btn" href="${storeSettings.mpLink}" target="_blank" rel="noopener">Pagar con Mercado Pago ↗</a><p class="pay-note">Se abrirá Mercado Pago en otra pestaña. Realiza el pago y luego confirma tu pedido aquí.</p>`;
+    el.innerHTML = `<p class="pay-note">Mercado Pago se implementará más adelante. Por ahora, paga con transferencia bancaria.</p>`;
   }
 }
 
@@ -610,19 +612,93 @@ document.querySelectorAll('.shipping-type-btn').forEach(btn => {
     document.getElementById('coStreet').required = isDomicilio;
     document.getElementById('coHouseNumber').required = isDomicilio;
     document.getElementById('coStarkenBranch').required = !isDomicilio;
+    if (isDomicilio) setTimeout(() => addressMap && addressMap.invalidateSize(), 60);
   });
 });
 
-// Links a Google Maps sin necesitar una API key de pago: abren una búsqueda
-// directa en vez de un mapa embebido/autocompletado.
-document.getElementById('mapsLinkDomicilio').addEventListener('click', () => {
-  const street = document.getElementById('coStreet').value.trim();
-  const houseNumber = document.getElementById('coHouseNumber').value.trim();
-  const comuna = document.getElementById('coComuna').value.trim();
-  const region = document.getElementById('coRegion').value;
-  const query = `${street} ${houseNumber}, ${comuna}, ${region}, Chile`.trim();
-  window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, '_blank');
+/* ===================================================================
+   MAPA DE DIRECCIÓN — Leaflet + OpenStreetMap.
+   Se eligió esta combinación (en vez del widget de Google Maps con
+   autocompletado) porque es 100% gratis y no requiere API key ni una
+   cuenta de Google Cloud con tarjeta de crédito asociada — el mismo
+   motivo por el que ya se evitó el plan Blaze de Firebase. Funciona
+   igual que un mapa "estilo Mercado Libre": el cliente marca su punto
+   y los campos de dirección se completan solos.
+   =================================================================== */
+let addressMap = null;
+let addressMarker = null;
+let addressGeocodeTimer = null;
+
+function normalizeText(str) {
+  return (str || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+}
+
+function ensureAddressMap() {
+  if (addressMap || typeof L === 'undefined') return;
+  addressMap = L.map('addressMap').setView([-35.6751, -71.543], 4); // Chile completo
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '&copy; OpenStreetMap',
+  }).addTo(addressMap);
+  addressMarker = L.marker([-35.6751, -71.543], { draggable: true }).addTo(addressMap);
+  addressMarker.on('dragend', () => {
+    const { lat, lng } = addressMarker.getLatLng();
+    reverseGeocodeAddress(lat, lng);
+  });
+  addressMap.on('click', (e) => {
+    addressMarker.setLatLng(e.latlng);
+    reverseGeocodeAddress(e.latlng.lat, e.latlng.lng);
+  });
+}
+
+async function reverseGeocodeAddress(lat, lng) {
+  const hint = document.getElementById('mapHint');
+  clearTimeout(addressGeocodeTimer);
+  if (hint) hint.textContent = 'Buscando dirección...';
+  addressGeocodeTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&addressdetails=1`);
+      const data = await res.json();
+      const a = data.address || {};
+      if (a.road) document.getElementById('coStreet').value = a.road;
+      if (a.house_number) document.getElementById('coHouseNumber').value = a.house_number;
+      const comuna = a.city_district || a.municipality || a.town || a.city || a.village || '';
+      if (comuna) document.getElementById('coComuna').value = comuna;
+      const regionSelect = document.getElementById('coRegion');
+      const regionText = normalizeText(a.state || '');
+      if (regionText) {
+        const match = [...regionSelect.options].find(o => {
+          const opt = normalizeText(o.textContent);
+          return opt && (opt === regionText || regionText.includes(opt) || opt.includes(regionText));
+        });
+        if (match) regionSelect.value = match.value;
+      }
+      if (hint) hint.textContent = data.display_name
+        ? `📍 ${data.display_name}`
+        : 'Ubicación marcada. Revisa y completa los datos si hace falta.';
+    } catch {
+      if (hint) hint.textContent = 'No se pudo obtener la dirección automáticamente. Completa los campos a mano.';
+    }
+  }, 500);
+}
+
+document.getElementById('addressDetails').addEventListener('toggle', (e) => {
+  if (!e.target.open) return;
+  ensureAddressMap();
+  setTimeout(() => addressMap && addressMap.invalidateSize(), 60);
 });
+
+document.getElementById('locateMeBtn').addEventListener('click', () => {
+  if (!navigator.geolocation) { alert('Tu navegador no soporta geolocalización.'); return; }
+  ensureAddressMap();
+  navigator.geolocation.getCurrentPosition((pos) => {
+    const { latitude, longitude } = pos.coords;
+    addressMap.setView([latitude, longitude], 17);
+    addressMarker.setLatLng([latitude, longitude]);
+    reverseGeocodeAddress(latitude, longitude);
+  }, () => alert('No se pudo obtener tu ubicación. Actívala en el navegador o marca el punto manualmente en el mapa.'));
+});
+
 document.getElementById('mapsLinkSucursal').addEventListener('click', () => {
   const comuna = document.getElementById('coComuna').value.trim();
   window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`Starken ${comuna}, Chile`.trim())}`, '_blank');
