@@ -75,6 +75,30 @@ coPhoneInput.addEventListener('input', (e) => {
 });
 
 /* ===================================================================
+   FORMATO DE RUT (xx.xxx.xxx-x)
+   =================================================================== */
+function formatClRut(raw) {
+  const clean = raw.replace(/[^0-9kK]/g, '').toUpperCase().slice(0, 9);
+  if (clean.length <= 1) return clean;
+  const verifier = clean.slice(-1);
+  const body = clean.slice(0, -1);
+  let formattedBody = '';
+  for (let i = 0; i < body.length; i++) {
+    const posFromEnd = body.length - i;
+    formattedBody += body[i];
+    if (posFromEnd > 1 && posFromEnd % 3 === 1) formattedBody += '.';
+  }
+  return `${formattedBody}-${verifier}`;
+}
+const coRutInput = document.getElementById('coRut');
+coRutInput.addEventListener('input', (e) => {
+  const pos = e.target.selectionStart;
+  const before = e.target.value.length;
+  e.target.value = formatClRut(e.target.value);
+  e.target.selectionEnd = pos + (e.target.value.length - before);
+});
+
+/* ===================================================================
    CARGA DE DATOS (Supabase)
    Se agrega un timeout manual para no dejar la UI colgada en "Cargando..."
    si el proyecto no existe (ej. supabase-config.js aún con placeholders).
