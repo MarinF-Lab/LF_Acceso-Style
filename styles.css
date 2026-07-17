@@ -525,7 +525,12 @@ svg { width: 22px; height: 22px; }
   .nav__burger { display: flex; }
   .nav__links {
     position: fixed;
-    top: 0; left: 0; bottom: 0;
+    top: 0; left: 0;
+    /* Alto explícito en vez de "bottom: 0": el header tiene backdrop-filter,
+       lo que lo convierte en el "containing block" de sus hijos position:fixed
+       — con bottom:0 el panel quedaba con la altura del header (~112px) en
+       vez de toda la pantalla. height:100vh no depende de eso. */
+    height: 100vh;
     width: min(78vw, 320px);
     background: var(--bg-2);
     border-right: 1px solid var(--line);
@@ -536,8 +541,14 @@ svg { width: 22px; height: 22px; }
     transform: translateX(-105%);
     transition: transform .28s ease;
     z-index: 40;
+    overflow-y: auto;
   }
   .nav__links.open { transform: translateX(0); }
+  .nav-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5);
+    z-index: 45; opacity: 0; transition: opacity .28s ease;
+  }
+  .nav-overlay.open { display: block; opacity: 1; }
   .nav__links a { font-size: 1.1rem; padding: .7rem 0; border-bottom: 1px solid var(--line); }
   .brand { justify-self: start; }
   .cats { grid-template-columns: 1fr 1fr; }

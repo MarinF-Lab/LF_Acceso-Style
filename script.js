@@ -7,12 +7,20 @@ import { DEFAULT_CATEGORIES, renderCategoryCards } from './categories.js';
    =================================================================== */
 const burger = document.getElementById('burger');
 const navLinks = document.getElementById('navLinks');
+const navOverlay = document.getElementById('navOverlay');
+function closeMobileNav() {
+  burger.classList.remove('open');
+  navLinks.classList.remove('open');
+  navOverlay.classList.remove('open');
+}
 burger?.addEventListener('click', () => {
   burger.classList.toggle('open');
   navLinks.classList.toggle('open');
+  navOverlay.classList.toggle('open');
 });
+navOverlay?.addEventListener('click', closeMobileNav);
 navLinks?.querySelectorAll('a').forEach(a =>
-  a.addEventListener('click', () => { burger.classList.remove('open'); navLinks.classList.remove('open'); })
+  a.addEventListener('click', closeMobileNav)
 );
 
 document.getElementById('newsletter')?.addEventListener('submit', e => {
