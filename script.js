@@ -727,11 +727,6 @@ document.getElementById('locateMeBtn').addEventListener('click', () => {
   }, () => alert('No se pudo obtener tu ubicación. Actívala en el navegador o marca el punto manualmente en el mapa.'));
 });
 
-document.getElementById('mapsLinkSucursal').addEventListener('click', () => {
-  const comuna = document.getElementById('coComuna').value.trim();
-  window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`Starken ${comuna}, Chile`.trim())}`, '_blank');
-});
-
 function buildShippingFields() {
   const region = document.getElementById('coRegion').value.trim();
   const comuna = document.getElementById('coComuna').value.trim();
