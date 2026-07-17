@@ -684,6 +684,14 @@ document.getElementById('continueShopping').addEventListener('click', () => {
    =================================================================== */
 const EDITOR_MODE = location.search.includes('editor');
 
+// Alcance restringido a esta página para poder instalarse como app aparte
+// del panel admin (que registra su propio service worker). No se registra
+// en modo editor (iframe de vista previa dentro del admin).
+if (!EDITOR_MODE && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw-store.js', { scope: 'index.html' })
+    .catch(err => console.warn('No se pudo registrar el service worker:', err));
+}
+
 (async function init() {
   await initAuth();
   // En modo editor (iframe del panel admin) NO cargamos los textos desde

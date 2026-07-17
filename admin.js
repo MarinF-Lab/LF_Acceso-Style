@@ -2,6 +2,13 @@ import { supabase } from './supabase-config.js';
 import { CONTENT_SECTIONS, CONTENT_FIELDS, applyContent, renderHeroTitle, getContent } from './content-fields.js';
 import { DEFAULT_CATEGORIES, sortCategories } from './categories.js';
 
+// Alcance restringido a esta página para poder instalarse como app aparte
+// de la tienda pública (que registra su propio service worker).
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw-admin.js', { scope: 'admin.html' })
+    .catch(err => console.warn('No se pudo registrar el service worker:', err));
+}
+
 /* ===================================================================
    SEGURIDAD — contraseña por defecto: lfacceso2026
    Mismo patrón que cliente-1: hash local en localStorage, sin Supabase
