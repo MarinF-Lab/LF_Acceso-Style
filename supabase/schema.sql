@@ -97,6 +97,8 @@ create table if not exists orders (
   total numeric not null default 0,
   "paymentMethod" text,
   "receiptUrl" text default '',
+  "discountCode" text,
+  "discountAmount" numeric,
   status text not null default 'nuevo',
   "createdAt" bigint,
   "updatedAt" bigint
@@ -118,6 +120,25 @@ create policy "orders_delete_public" on orders for delete using (true);
 -- Habilita Realtime en orders para que el panel admin se refresque y
 -- muestre una notificación apenas llega un pedido nuevo.
 alter publication supabase_realtime add table orders;
+
+-- ----------------------------------------------------------------------------
+-- CÓDIGOS DE DESCUENTO (únicos por usuario, un solo uso, desde la 2ª compra)
+-- ----------------------------------------------------------------------------
+create table if not exists discount_codes (
+  code text primary key,
+  "userId" uuid references auth.users(id),
+  percent numeric not null default 10,
+  used boolean not null default false,
+  "createdAt" bigint
+);
+
+alter table discount_codes enable row level security;
+create policy "discount_codes_select_own" on discount_codes
+  for select using (auth.uid() = "userId");
+create policy "discount_codes_insert_own" on discount_codes
+  for insert with check (auth.uid() = "userId");
+create policy "discount_codes_update_own" on discount_codes
+  for update using (auth.uid() = "userId") with check (auth.uid() = "userId");
 
 -- ----------------------------------------------------------------------------
 -- CONFIGURACIÓN (settings/store y settings/content de Firestore)

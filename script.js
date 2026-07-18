@@ -24,10 +24,70 @@ navLinks?.querySelectorAll('a').forEach(a =>
   a.addEventListener('click', closeMobileNav)
 );
 
-document.getElementById('newsletter')?.addEventListener('submit', e => {
+/* ===================================================================
+   CÓDIGO DE DESCUENTO (10% en la segunda compra, único por usuario)
+   El botón "Quiero mi código" pide iniciar sesión con el link mágico;
+   al volver logueado, el código se genera y se muestra aquí y en
+   Mi cuenta (no llega por correo — el correo solo trae el link).
+   =================================================================== */
+const DISCOUNT_PERCENT = 10;
+
+function generateDiscountCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin 0/O/1/I para evitar confusiones
+  let out = 'LF-';
+  for (let i = 0; i < 5; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}
+
+/** Devuelve el código del usuario logueado, creándolo si aún no existe. */
+async function ensureDiscountCode() {
+  const { data: existing, error } = await supabase.from('discount_codes')
+    .select('*').eq('userId', currentUser.id).limit(1);
+  if (error) throw error;
+  if (existing?.length) return existing[0];
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const row = { code: generateDiscountCode(), userId: currentUser.id, percent: DISCOUNT_PERCENT, used: false, createdAt: Date.now() };
+    const { error: insertError } = await supabase.from('discount_codes').insert(row);
+    if (!insertError) return row;
+    if (insertError.code !== '23505') throw insertError; // 23505 = código repetido, reintentar
+  }
+  throw new Error('No se pudo generar un código único.');
+}
+
+async function showMyDiscountCode() {
+  const note = document.getElementById('promoNote');
+  try {
+    const row = await ensureDiscountCode();
+    note.innerHTML = row.used
+      ? `Tu código <strong>${row.code}</strong> ya fue usado.`
+      : `✓ Tu código es <strong>${row.code}</strong> — ${row.percent}% de descuento, válido en tu segunda compra. También lo verás en Mi cuenta.`;
+    note.hidden = false;
+  } catch (err) {
+    console.error('No se pudo obtener el código de descuento:', err);
+    note.textContent = 'No se pudo generar tu código. Intenta nuevamente.';
+    note.hidden = false;
+  }
+}
+
+document.getElementById('newsletter')?.addEventListener('submit', async e => {
   e.preventDefault();
   const note = document.getElementById('promoNote');
-  if (note) { note.hidden = false; e.target.reset(); }
+  const email = document.getElementById('newsletterEmail').value.trim();
+  if (currentUser) { showMyDiscountCode(); return; }
+  localStorage.setItem('lf_pending_code', '1');
+  try {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: location.origin + location.pathname },
+    });
+    if (error) throw error;
+    note.textContent = '✓ Te enviamos un link a tu correo. Al iniciar sesión, tu código aparecerá aquí y en Mi cuenta.';
+    note.hidden = false;
+    e.target.reset();
+  } catch (err) {
+    note.textContent = 'No se pudo enviar el link: ' + err.message;
+    note.hidden = false;
+  }
 });
 
 const nav = document.getElementById('nav');
@@ -342,6 +402,63 @@ function removeFromCart(key) {
 function cartTotal() { return cart.reduce((sum, i) => sum + i.price * i.qty, 0); }
 function cartCount() { return cart.reduce((sum, i) => sum + i.qty, 0); }
 
+/* Descuento aplicado en el carrito: { code, percent } o null. */
+let appliedDiscount = null;
+function discountAmount() {
+  if (!appliedDiscount) return 0;
+  return Math.round(cartTotal() * appliedDiscount.percent / 100);
+}
+function payableTotal() { return cartTotal() - discountAmount(); }
+
+function renderDiscountLine() {
+  const line = document.getElementById('cartDiscountLine');
+  line.hidden = !appliedDiscount;
+  if (appliedDiscount) {
+    document.getElementById('cartDiscountAmount').textContent =
+      `−${fmt(discountAmount())} (${appliedDiscount.code})`;
+  }
+  document.getElementById('cartTotal').textContent = fmt(payableTotal());
+}
+
+function setDiscountStatus(msg, ok) {
+  const el = document.getElementById('discountStatus');
+  el.textContent = msg;
+  el.className = `cart-discount__status cart-discount__status--${ok ? 'ok' : 'error'}`;
+  el.hidden = false;
+}
+
+async function applyDiscountCode() {
+  const input = document.getElementById('discountInput');
+  const code = input.value.trim().toUpperCase();
+  if (!code) return;
+  if (!currentUser) { setDiscountStatus('Inicia sesión para usar tu código.', false); return; }
+  const btn = document.getElementById('applyDiscountBtn');
+  btn.disabled = true;
+  try {
+    const { data, error } = await supabase.from('discount_codes')
+      .select('*').eq('code', code).eq('userId', currentUser.id).limit(1);
+    if (error) throw error;
+    const row = data?.[0];
+    if (!row) { setDiscountStatus('Código inválido o no pertenece a tu cuenta.', false); return; }
+    if (row.used) { setDiscountStatus('Este código ya fue usado.', false); return; }
+    // Válido solo desde la segunda compra: debe existir al menos un pedido previo.
+    const { count, error: countError } = await supabase.from('orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('userId', currentUser.id).neq('status', 'rechazado');
+    if (countError) throw countError;
+    if (!count) { setDiscountStatus('Tu código es válido a partir de tu segunda compra.', false); return; }
+    appliedDiscount = { code: row.code, percent: Number(row.percent) || 10 };
+    setDiscountStatus(`✓ Código aplicado: −${appliedDiscount.percent}%`, true);
+    renderDiscountLine();
+  } catch (err) {
+    console.error('No se pudo validar el código:', err);
+    setDiscountStatus('No se pudo validar el código. Intenta nuevamente.', false);
+  } finally {
+    btn.disabled = false;
+  }
+}
+document.getElementById('applyDiscountBtn').addEventListener('click', applyDiscountCode);
+
 function renderCart() {
   const badge = document.getElementById('cartBadge');
   badge.textContent = cartCount();
@@ -352,6 +469,9 @@ function renderCart() {
   if (!cart.length) {
     itemsEl.innerHTML = `<p class="cart-drawer__empty">Tu carrito está vacío.</p>`;
     footerEl.style.display = 'none';
+    appliedDiscount = null;
+    document.getElementById('discountInput').value = '';
+    document.getElementById('discountStatus').hidden = true;
     return;
   }
 
@@ -372,7 +492,7 @@ function renderCart() {
     btn.addEventListener('click', () => removeFromCart(btn.dataset.remove));
   });
 
-  document.getElementById('cartTotal').textContent = fmt(cartTotal());
+  renderDiscountLine();
   footerEl.style.display = 'block';
 }
 
@@ -464,10 +584,23 @@ async function renderAccountBody() {
       <span>Conectado como <strong>${currentUser.email}</strong></span>
       <button type="button" class="account-logout" id="logoutAccountBtn">Cerrar sesión</button>
     </div>
+    <p class="account-discount" id="accountDiscount" hidden></p>
     <p class="cart-drawer__empty" id="accountOrdersEmpty" hidden>Aún no tienes compras.</p>
     <div id="accountOrdersList"></div>
   `;
   document.getElementById('logoutAccountBtn').addEventListener('click', () => supabase.auth.signOut());
+
+  // Muestra el código de descuento si el usuario ya lo generó (no lo crea solo).
+  supabase.from('discount_codes').select('*').eq('userId', currentUser.id).limit(1)
+    .then(({ data }) => {
+      const row = data?.[0];
+      const el = document.getElementById('accountDiscount');
+      if (!row || !el) return;
+      el.innerHTML = row.used
+        ? `Código <strong>${row.code}</strong> — ya usado ✓`
+        : `🎟️ Tu código: <strong>${row.code}</strong> (${row.percent}% en tu segunda compra)`;
+      el.hidden = false;
+    });
 
   const orders = await loadMyOrders();
   if (!orders.length) {
@@ -496,7 +629,15 @@ async function initAuth() {
   currentUser = session?.user || null;
   supabase.auth.onAuthStateChange((_event, session) => {
     currentUser = session?.user || null;
-    if (currentUser) document.getElementById('cartAuth').hidden = true;
+    if (currentUser) {
+      document.getElementById('cartAuth').hidden = true;
+      // Si pidió su código antes de iniciar sesión, mostrarlo ahora.
+      if (localStorage.getItem('lf_pending_code')) {
+        localStorage.removeItem('lf_pending_code');
+        showMyDiscountCode();
+        document.getElementById('ofertas')?.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
     if (accountDrawer.classList.contains('open')) renderAccountBody();
   });
   // Un magic link suele abrirse en otra pestaña: al volver a esta, refrescamos
@@ -615,7 +756,8 @@ function renderOrderSummaryMini() {
   const el = document.getElementById('orderSummaryMini');
   el.innerHTML = `
     ${cart.map(i => `<div class="summary-item"><span>${i.name} × ${i.qty} (${i.size})</span><span>${fmt(i.price * i.qty)}</span></div>`).join('')}
-    <div class="summary-total"><span>Total</span><span>${fmt(cartTotal())}</span></div>
+    ${appliedDiscount ? `<div class="summary-item"><span>Descuento (${appliedDiscount.code})</span><span>−${fmt(discountAmount())}</span></div>` : ''}
+    <div class="summary-total"><span>Total</span><span>${fmt(payableTotal())}</span></div>
   `;
 }
 
@@ -811,7 +953,9 @@ document.getElementById('checkoutForm2').addEventListener('submit', async (e) =>
       customerEmail: document.getElementById('coEmail').value.trim(),
       ...buildShippingFields(),
       items: cart.map(i => ({ id: i.id, name: i.name, size: i.size, qty: i.qty, price: i.price, imageUrl: i.imageUrl })),
-      total: cartTotal(),
+      total: payableTotal(),
+      discountCode: appliedDiscount?.code || null,
+      discountAmount: appliedDiscount ? discountAmount() : null,
       paymentMethod: selectedPayMethod,
       receiptUrl,
       status: 'nuevo',
@@ -820,6 +964,12 @@ document.getElementById('checkoutForm2').addEventListener('submit', async (e) =>
 
     const { error: insertError } = await supabase.from('orders').insert(order);
     if (insertError) throw insertError;
+    if (appliedDiscount) {
+      const { error: usedError } = await supabase.from('discount_codes')
+        .update({ used: true }).eq('code', appliedDiscount.code);
+      if (usedError) console.error('No se pudo marcar el código como usado:', usedError);
+      appliedDiscount = null;
+    }
     await deductStock(cart);
 
     document.getElementById('orderNum').textContent = '#' + orderNumber;

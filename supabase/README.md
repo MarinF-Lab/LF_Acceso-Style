@@ -51,6 +51,17 @@ recargar la página a mano), usando Supabase Realtime.
    o computador) donde tengas la sesión abierta. Hay que activarlo una vez
    por dispositivo/navegador (el navegador pedirá permiso).
 
+## Código de descuento (10% en la segunda compra)
+
+El botón "Quiero mi código" de la portada pide iniciar sesión con el link
+mágico; al volver logueado se genera un código único por usuario (se muestra
+en pantalla y en Mi cuenta — no llega por correo). El código se ingresa en el
+carrito y solo vale desde la segunda compra, una única vez.
+
+1. Si corriste `schema.sql` desde cero, ya está todo. Si tu proyecto es
+   anterior, corré `supabase/migrations/005_add_discount_codes.sql` (crea la
+   tabla `discount_codes` y agrega las columnas de descuento a `orders`).
+
 ## Envío automático de WhatsApp (opcional, Fase B)
 
 No es necesario para que la tienda funcione — hoy usa enlaces `wa.me`

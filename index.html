@@ -113,13 +113,13 @@
   <section class="promo" id="ofertas">
     <div class="promo__inner">
       <span class="eyebrow gold" data-content="promoEyebrow">Oferta de temporada</span>
-      <h2 data-content="promoHeading">−25% en tu primera compra</h2>
-      <p data-content="promoText">Suscríbete y recibe el código en tu correo. Válido en toda la colección de temporada.</p>
+      <h2 data-content="promoHeading">−10% en tu segunda compra</h2>
+      <p data-content="promoText">Ingresa tu correo e inicia sesión con el link que te llegará: tu código único aparecerá aquí y en Mi cuenta. Válido solo en tu segunda compra.</p>
       <form class="promo__form" id="newsletter">
-        <input type="email" placeholder="tu@correo.com" required />
+        <input type="email" id="newsletterEmail" placeholder="tu@correo.com" required />
         <button class="btn btn--primary" type="submit">Quiero mi código</button>
       </form>
-      <span class="promo__note" id="promoNote" hidden>✓ ¡Listo! Revisa tu correo.</span>
+      <span class="promo__note" id="promoNote" hidden></span>
     </div>
   </section>
 
@@ -182,6 +182,14 @@
     <div class="cart-drawer__items" id="cartItems"></div>
     <div class="cart-drawer__footer" id="cartFooter" style="display:none">
       <div class="cart-auth" id="cartAuth" hidden></div>
+      <div class="cart-discount">
+        <div class="cart-discount__row">
+          <input type="text" id="discountInput" placeholder="Código de descuento" autocomplete="off" />
+          <button type="button" class="btn" id="applyDiscountBtn">Aplicar</button>
+        </div>
+        <p class="cart-discount__status" id="discountStatus" hidden></p>
+      </div>
+      <div class="cart-drawer__total cart-drawer__discount" id="cartDiscountLine" hidden><span>Descuento</span><span id="cartDiscountAmount"></span></div>
       <div class="cart-drawer__total"><span>Total</span><span id="cartTotal">$0</span></div>
       <button class="btn btn--primary btn--full" id="goCheckout">Ir a pagar</button>
     </div>

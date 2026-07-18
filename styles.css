@@ -644,6 +644,20 @@ svg { width: 22px; height: 22px; }
 
 .cart-drawer__footer { padding: 1.2rem 1.4rem; border-top: 1px solid var(--line); }
 .cart-drawer__total { display: flex; justify-content: space-between; font-family: var(--display); font-weight: 800; font-size: 1.1rem; margin-bottom: 1rem; }
+.cart-drawer__discount { color: var(--gold-soft); font-size: .95rem; margin-bottom: .4rem; }
+.cart-discount { margin-bottom: 1rem; }
+.cart-discount__row { display: flex; gap: .5rem; }
+.cart-discount__row input {
+  flex: 1; min-width: 0;
+  background: var(--bg); border: 1px solid var(--line); color: var(--text);
+  padding: .6rem .8rem; border-radius: var(--radius-sm); font-size: .85rem; font-family: var(--font);
+  text-transform: uppercase;
+}
+.cart-discount__row input:focus { outline: none; border-color: var(--blue); }
+.cart-discount__row .btn { padding: .6rem 1rem; font-size: .85rem; border: 1px solid var(--line); }
+.cart-discount__status { font-size: .78rem; margin-top: .4rem; }
+.cart-discount__status--ok { color: var(--gold-soft); }
+.cart-discount__status--error { color: #e5484d; }
 .btn--full { width: 100%; }
 
 /* ── Login de clientes / Mis compras ── */
@@ -666,6 +680,8 @@ svg { width: 22px; height: 22px; }
 .account-user strong { color: var(--text); }
 .account-logout { background: none; border: none; color: var(--dim); font-size: .78rem; text-decoration: underline; cursor: pointer; }
 .account-logout:hover { color: var(--text); }
+.account-discount { font-size: .85rem; color: var(--gold-soft); border: 1px dashed var(--gold-soft); border-radius: var(--radius-sm); padding: .6rem .8rem; margin-bottom: 1rem; }
+.account-discount strong { letter-spacing: .05em; }
 
 .account-order { padding: .8rem 0; border-bottom: 1px solid var(--line); }
 .account-order:last-child { border-bottom: none; }

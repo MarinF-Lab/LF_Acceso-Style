@@ -87,7 +87,7 @@ function toast(msg) {
 }
 function waLink(phone, message) {
   const digits = (phone || '').replace(/\D/g, '');
-  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+  return message ? `https://wa.me/${digits}?text=${encodeURIComponent(message)}` : `https://wa.me/${digits}`;
 }
 
 function sanitizeFilename(str) {
@@ -116,11 +116,14 @@ function downloadBlob(file) {
 
 /* Manda las fotos de los productos al proveedor como archivo real (no un
    link) usando el selector nativo de "Compartir" del celular, con WhatsApp
-   como una de las opciones. Si el navegador no lo soporta (ej. computador de
-   escritorio), descarga las imágenes para adjuntar a mano y abre igual el
-   chat de WhatsApp con el texto ya listo. El texto también se copia al
-   portapapeles como respaldo, porque con varios productos WhatsApp no
-   siempre deja el texto pegado a todas las fotos a la vez. */
+   como una de las opciones. El texto NO va dentro del "compartir": se manda
+   solo la imagen (así llega primero, como pidió el cliente) y el texto queda
+   copiado al portapapeles para pegarlo después como el siguiente mensaje —
+   además evita que WhatsApp lo deje pegado como caption de una sola foto
+   cuando son varios productos. Si el navegador no soporta compartir
+   archivos (ej. computador de escritorio), descarga las imágenes para
+   adjuntar a mano y abre el chat de WhatsApp con el texto ya listo para
+   enviar después de la foto. */
 async function sendToSupplier(o, supplierMsg) {
   try { await navigator.clipboard.writeText(supplierMsg); } catch { /* portapapeles no disponible, no es crítico */ }
 
@@ -139,7 +142,8 @@ async function sendToSupplier(o, supplierMsg) {
   const canShareFiles = files.length && navigator.canShare && navigator.canShare({ files });
   if (canShareFiles) {
     try {
-      await navigator.share({ files, text: supplierMsg, title: `Pedido #${o.orderNumber}` });
+      await navigator.share({ files, title: `Pedido #${o.orderNumber}` });
+      toast('📷 Imagen enviada. Pega el texto (ya copiado) como el siguiente mensaje.');
       return;
     } catch (err) {
       if (err?.name === 'AbortError') return; // el usuario canceló el compartir, no insistir
@@ -148,7 +152,8 @@ async function sendToSupplier(o, supplierMsg) {
   }
 
   files.forEach(downloadBlob);
-  window.open(waLink(storeSettings.whatsappSupplier, supplierMsg), '_blank');
+  window.open(waLink(storeSettings.whatsappSupplier, ''), '_blank');
+  toast('🖼️ Imagen descargada — adjúntala y envíala primero, luego pega el texto (ya copiado).');
 }
 
 /* ===================================================================
@@ -854,6 +859,7 @@ function renderOrderDetail() {
     <h3>Pedido #${o.orderNumber}</h3>
     <p class="order-detail__meta">${o.customerName} · ${o.customerPhone || 'sin teléfono'} · ${new Date(o.createdAt).toLocaleString('es-CL')}</p>
     ${itemsHtml}
+    ${o.discountCode ? `<p class="order-detail__meta">🎟️ Descuento aplicado: ${o.discountCode} (−${fmt(o.discountAmount || 0)})</p>` : ''}
     <div class="order-total"><span>Total</span><span>${fmt(o.total)}</span></div>
     <p class="order-detail__meta">Pago: ${paymentLabel(o.paymentMethod)}${shippingMeta ? ` · Envío a: ${shippingMeta}` : ''}</p>
     ${o.customerRut ? `<p class="order-detail__meta">RUT: ${o.customerRut}</p>` : ''}
