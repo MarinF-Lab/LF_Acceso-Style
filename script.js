@@ -1,6 +1,6 @@
 import { supabase } from './supabase-config.js';
 import { applyContent } from './content-fields.js';
-import { DEFAULT_CATEGORIES, DEFAULT_PRODUCT_TYPES, SIZES, renderCategoryCards } from './categories.js';
+import { DEFAULT_CATEGORIES, DEFAULT_PRODUCT_TYPES, DEFAULT_SEASONS, SIZES, renderCategoryCards } from './categories.js';
 import { STARKEN_BRANCHES } from './starken-branches.js';
 
 /* ===================================================================
@@ -102,11 +102,40 @@ let cart = JSON.parse(localStorage.getItem('lf_cart') || '[]');
 let quickViewProduct = null;
 let quickViewSize = null;
 let quickViewQty = 1;
+let quickViewImages = [];
+let quickViewImageIndex = 0;
+
+function renderQuickViewMedia() {
+  const media = document.getElementById('qvMedia');
+  if (!quickViewImages.length) {
+    media.innerHTML = `<span class="card__ph">${(quickViewProduct.type || 'Producto').toUpperCase()}</span>`;
+    return;
+  }
+  const url = quickViewImages[quickViewImageIndex];
+  const arrows = quickViewImages.length > 1
+    ? `<button type="button" class="qv-arrow qv-arrow--prev" id="qvPrev">‹</button><button type="button" class="qv-arrow qv-arrow--next" id="qvNext">›</button>`
+    : '';
+  const dots = quickViewImages.length > 1
+    ? `<div class="qv-dots">${quickViewImages.map((_, i) => `<button type="button" class="qv-dot ${i === quickViewImageIndex ? 'is-active' : ''}" data-dot="${i}"></button>`).join('')}</div>`
+    : '';
+  media.innerHTML = `<img src="${url}" alt="${quickViewProduct.name}" />${arrows}${dots}`;
+  document.getElementById('qvPrev')?.addEventListener('click', () => {
+    quickViewImageIndex = (quickViewImageIndex - 1 + quickViewImages.length) % quickViewImages.length;
+    renderQuickViewMedia();
+  });
+  document.getElementById('qvNext')?.addEventListener('click', () => {
+    quickViewImageIndex = (quickViewImageIndex + 1) % quickViewImages.length;
+    renderQuickViewMedia();
+  });
+  media.querySelectorAll('[data-dot]').forEach(dot => {
+    dot.addEventListener('click', () => { quickViewImageIndex = Number(dot.dataset.dot); renderQuickViewMedia(); });
+  });
+}
 let selectedPayMethod = null;
 let receiptFile = null;
 let currentUser = null;
 const ORDER_STATUS_LABELS = {
-  nuevo: 'Nuevo', armando: 'Armando', en_camino: 'En camino', entregado: 'Entregado', rechazado: 'Rechazado',
+  nuevo: 'Nuevo', armando: 'Armando', en_camino: 'En camino', entregado: 'Entregado', rechazado: 'Rechazado', reembolso: 'Reembolso',
 };
 
 function fmt(n) { return '$' + Number(n || 0).toLocaleString('es-CL'); }
@@ -205,8 +234,15 @@ async function loadPageContent() {
   } catch (err) {
     console.error('No se pudo cargar los textos de la página (se mantienen los de por defecto):', err);
     applyContent(document, {});
+  } finally {
+    // Se guarda después de aplicar el contenido del admin, para poder
+    // restaurar el título real al quitar el filtro de categoría.
+    defaultCatalogHeading = document.getElementById('catalogHeading').textContent;
   }
 }
+let defaultCatalogHeading = 'Lo más nuevo';
+
+let currentCategoryFilter = null; // id de categoría activa (tarjetas Hombre/Mujer/...), o null = todas
 
 async function loadCategories() {
   const container = document.getElementById('cats');
@@ -218,7 +254,28 @@ async function loadCategories() {
     console.error('No se pudieron cargar las categorías (se usan las por defecto):', err);
     renderCategoryCards(container, DEFAULT_CATEGORIES);
   }
+  container.querySelectorAll('.cat[data-cat-id]').forEach(card => {
+    card.addEventListener('click', (e) => {
+      e.preventDefault();
+      const name = card.querySelector('h3')?.textContent || card.dataset.catId;
+      container.querySelectorAll('.cat').forEach(c => c.classList.remove('is-active'));
+      card.classList.add('is-active');
+      currentCategoryFilter = card.dataset.catId;
+      document.getElementById('catalogHeading').textContent = name;
+      document.getElementById('clearCategoryFilter').hidden = false;
+      applyCatalogFilters();
+      document.getElementById('catalogo').scrollIntoView({ behavior: 'smooth' });
+    });
+  });
 }
+
+document.getElementById('clearCategoryFilter').addEventListener('click', () => {
+  currentCategoryFilter = null;
+  document.getElementById('catalogHeading').textContent = defaultCatalogHeading;
+  document.getElementById('clearCategoryFilter').hidden = true;
+  document.querySelectorAll('#cats .cat').forEach(c => c.classList.remove('is-active'));
+  applyCatalogFilters();
+});
 
 async function loadProductTypes() {
   const filters = document.getElementById('filters');
@@ -234,6 +291,34 @@ async function loadProductTypes() {
   } catch (err) {
     console.error('No se pudieron cargar los tipos de producto (se usan los por defecto):', err);
     renderChips(DEFAULT_PRODUCT_TYPES);
+  }
+}
+
+let currentSeasonFilter = 'all';
+
+async function loadSeasons() {
+  const el = document.getElementById('seasonFilters');
+  const renderChips = (seasons) => {
+    const sorted = [...seasons].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    if (!sorted.length) { el.innerHTML = ''; return; }
+    el.innerHTML = `<button type="button" class="chip is-active" data-season="all">Todas las temporadas</button>` +
+      sorted.map(s => `<button type="button" class="chip" data-season="${s.id}">${s.name}</button>`).join('');
+    el.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        el.querySelectorAll('.chip').forEach(c => c.classList.remove('is-active'));
+        chip.classList.add('is-active');
+        currentSeasonFilter = chip.dataset.season;
+        applyCatalogFilters();
+      });
+    });
+  };
+  try {
+    const { data, error } = await withTimeout(supabase.from('seasons').select('*'), 8000, 'seasons');
+    if (error) throw error;
+    renderChips(data.length ? data : []);
+  } catch (err) {
+    console.error('No se pudieron cargar las estaciones:', err);
+    el.innerHTML = '';
   }
 }
 
@@ -267,7 +352,7 @@ function renderCatalog() {
       ? `<img class="card__img" src="${p.imageUrl}" alt="${p.name}" loading="lazy" />`
       : `<span class="card__ph">${(p.type || 'Producto').toUpperCase()}</span>`;
     return `
-      <article class="card" data-cat="${p.type || ''}" data-id="${p.id}" ${p.imageUrl ? '' : `style="--c1:${GRADIENTS[idx % GRADIENTS.length][0]};--c2:${GRADIENTS[idx % GRADIENTS.length][1]}"`}>
+      <article class="card" data-type="${p.type || ''}" data-category="${p.category || ''}" data-season="${p.season || ''}" data-price="${p.price || 0}" data-colors="${(p.colors || []).join('|')}" data-id="${p.id}" ${p.imageUrl ? '' : `style="--c1:${GRADIENTS[idx % GRADIENTS.length][0]};--c2:${GRADIENTS[idx % GRADIENTS.length][1]}"`}>
         <div class="card__media">
           ${tagHtml}
           ${media}
@@ -288,6 +373,8 @@ function renderCatalog() {
   });
 
   wireFilters();
+  renderExtraFilters();
+  applyCatalogFilters();
 }
 
 function totalStock(p) {
@@ -295,15 +382,94 @@ function totalStock(p) {
   return Object.values(p.sizeStock).reduce((a, b) => a + (Number(b) || 0), 0);
 }
 
+let currentTypeFilter = 'all';
+let currentSort = 'none';
+let currentPriceRange = null; // { min, max } o null
+let currentColor = null;
+
+function applyCatalogFilters() {
+  const cards = [...document.querySelectorAll('#grid .card')];
+  cards.forEach(c => {
+    const matchesCategory = !currentCategoryFilter || c.dataset.category === currentCategoryFilter;
+    const matchesType = currentTypeFilter === 'all' || c.dataset.type === currentTypeFilter;
+    const matchesSeason = currentSeasonFilter === 'all' || c.dataset.season === currentSeasonFilter;
+    const price = Number(c.dataset.price) || 0;
+    const matchesPrice = !currentPriceRange || (price >= currentPriceRange.min && price <= currentPriceRange.max);
+    const matchesColor = !currentColor || (c.dataset.colors || '').split('|').includes(currentColor);
+    c.style.display = (matchesCategory && matchesType && matchesSeason && matchesPrice && matchesColor) ? '' : 'none';
+  });
+
+  if (currentSort === 'price-asc' || currentSort === 'price-desc') {
+    const sorted = [...cards].sort((a, b) => {
+      const diff = Number(a.dataset.price) - Number(b.dataset.price);
+      return currentSort === 'price-asc' ? diff : -diff;
+    });
+    sorted.forEach(c => grid.appendChild(c));
+  }
+}
+
+function renderExtraFilters() {
+  const prices = allProducts.map(p => Number(p.price) || 0).filter(p => p > 0);
+  const priceEl = document.getElementById('priceRangeFilters');
+  if (prices.length > 1) {
+    const min = Math.min(...prices), max = Math.max(...prices);
+    const bucketCount = 4;
+    const step = Math.ceil((max - min + 1) / bucketCount);
+    const buckets = [];
+    for (let i = 0; i < bucketCount; i++) {
+      const bMin = min + step * i;
+      if (bMin > max) break;
+      const bMax = i === bucketCount - 1 ? max : bMin + step - 1;
+      buckets.push({ min: bMin, max: bMax });
+    }
+    priceEl.innerHTML = `<button type="button" class="chip is-active" data-price-all>Todos los precios</button>` +
+      buckets.map(b => `<button type="button" class="chip" data-price-min="${b.min}" data-price-max="${b.max}">${fmt(b.min)} – ${fmt(b.max)}</button>`).join('');
+    priceEl.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        priceEl.querySelectorAll('.chip').forEach(c => c.classList.remove('is-active'));
+        chip.classList.add('is-active');
+        currentPriceRange = chip.dataset.priceMin !== undefined
+          ? { min: Number(chip.dataset.priceMin), max: Number(chip.dataset.priceMax) }
+          : null;
+        applyCatalogFilters();
+      });
+    });
+  } else {
+    priceEl.innerHTML = '';
+  }
+
+  const colorSet = [...new Set(allProducts.flatMap(p => p.colors || []))];
+  const colorEl = document.getElementById('colorFilters');
+  if (colorSet.length) {
+    colorEl.innerHTML = `<button type="button" class="chip is-active" data-color-all>Todos los colores</button>` +
+      colorSet.map(c => `<button type="button" class="color-swatch-btn" data-color="${c}" style="--s:${c}" title="${c}"></button>`).join('');
+    colorEl.querySelectorAll('[data-color], [data-color-all]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        colorEl.querySelectorAll('.color-swatch-btn').forEach(b => b.classList.remove('is-active'));
+        colorEl.querySelector('[data-color-all]').classList.remove('is-active');
+        btn.classList.add('is-active');
+        currentColor = btn.dataset.color || null;
+        applyCatalogFilters();
+      });
+    });
+  } else {
+    colorEl.innerHTML = '';
+  }
+}
+
+document.getElementById('sortPriceFilter').addEventListener('change', (e) => {
+  currentSort = e.target.value;
+  applyCatalogFilters();
+});
+
 function wireFilters() {
   const filters = document.getElementById('filters');
-  const cards = [...document.querySelectorAll('#grid .card')];
   filters?.querySelectorAll('.chip').forEach(chip => {
     chip.onclick = () => {
       filters.querySelectorAll('.chip').forEach(c => c.classList.remove('is-active'));
       chip.classList.add('is-active');
-      const f = chip.dataset.filter;
-      cards.forEach(c => { c.style.display = (f === 'all' || c.dataset.cat === f) ? '' : 'none'; });
+      currentTypeFilter = chip.dataset.filter;
+      applyCatalogFilters();
     };
   });
 }
@@ -320,9 +486,9 @@ function openQuickView(productId) {
   quickViewQty = 1;
   quickViewSize = null;
 
-  document.getElementById('qvMedia').innerHTML = p.imageUrl
-    ? `<img src="${p.imageUrl}" alt="${p.name}" />`
-    : `<span class="card__ph">${(p.type || 'Producto').toUpperCase()}</span>`;
+  quickViewImages = p.images?.length ? p.images : (p.imageUrl ? [p.imageUrl] : []);
+  quickViewImageIndex = 0;
+  renderQuickViewMedia();
   document.getElementById('qvName').textContent = p.name;
   document.getElementById('qvPrice').textContent = fmt(p.price);
   document.getElementById('qvDesc').textContent = p.description || '';
@@ -331,7 +497,8 @@ function openQuickView(productId) {
 
   const sizeStock = p.sizeStock || {};
   const sizesRow = document.getElementById('qvSizes');
-  const sizes = Object.keys(sizeStock).length ? Object.keys(sizeStock) : SIZES;
+  const storedSizes = Object.keys(sizeStock);
+  const sizes = storedSizes.length ? SIZES.filter(s => storedSizes.includes(s)) : SIZES;
   sizesRow.innerHTML = sizes.map(s => {
     const available = sizeStock[s] === undefined ? true : sizeStock[s] > 0;
     return `<button type="button" class="size-btn" data-size="${s}" ${available ? '' : 'disabled'}>${s}</button>`;
@@ -693,12 +860,28 @@ document.getElementById('checkoutForm1').addEventListener('submit', e => {
 });
 document.getElementById('backToStep1').addEventListener('click', () => goToStep(1));
 
+/* Mercado Pago: si el carrito tiene un solo producto distinto se usa su link
+   individual (monto fijo); con 2+ productos distintos se usa el link general
+   de Configuración (el cliente ingresa el monto a mano). */
+let mpAvailability = { available: false, link: '', mpLinkType: null };
+function computeMpAvailability() {
+  const distinctIds = [...new Set(cart.map(i => i.id))];
+  if (distinctIds.length === 1) {
+    const p = allProducts.find(x => x.id === distinctIds[0]);
+    if (p?.mpLink) return { available: true, link: p.mpLink, mpLinkType: 'individual' };
+  } else if (distinctIds.length > 1 && storeSettings.mpLink) {
+    return { available: true, link: storeSettings.mpLink, mpLinkType: 'general' };
+  }
+  return { available: false, link: '', mpLinkType: null };
+}
+
 function renderPaymentMethods() {
   const wrap = document.getElementById('payMethods');
   const hasTransfer = storeSettings.bankName || storeSettings.bankAccountNumber;
+  mpAvailability = computeMpAvailability();
   wrap.querySelectorAll('.pay-method').forEach(btn => {
     const method = btn.dataset.method;
-    btn.disabled = method === 'transfer' && !hasTransfer;
+    btn.disabled = method === 'transfer' ? !hasTransfer : !mpAvailability.available;
     btn.classList.remove('is-active');
   });
   document.getElementById('payDetail').innerHTML = '';
@@ -714,7 +897,7 @@ document.getElementById('payMethods').addEventListener('click', (e) => {
   btn.classList.add('is-active');
   selectedPayMethod = btn.dataset.method;
   renderPaymentDetail(selectedPayMethod);
-  document.getElementById('confirmOrderBtn').disabled = selectedPayMethod === 'mercadopago';
+  document.getElementById('confirmOrderBtn').disabled = false;
 });
 
 function bankBoxHtml() {
@@ -748,7 +931,11 @@ function renderPaymentDetail(method) {
         : 'Sube una foto o PDF del comprobante para confirmar tu pedido.';
     });
   } else if (method === 'mercadopago') {
-    el.innerHTML = `<p class="pay-note">Mercado Pago se implementará más adelante. Por ahora, paga con transferencia bancaria.</p>`;
+    el.innerHTML = mpAvailability.mpLinkType === 'general'
+      ? `<a class="pay-link-btn" href="${mpAvailability.link}" target="_blank" rel="noopener">Pagar con Mercado Pago ↗</a>
+         <p class="pay-note">Tu pedido tiene más de un producto, así que se paga con el link general de Mercado Pago (ahí ingresas el monto a mano). <strong>Ingresa exactamente ${fmt(payableTotal())}</strong>. Luego confirma tu pedido aquí.</p>`
+      : `<a class="pay-link-btn" href="${mpAvailability.link}" target="_blank" rel="noopener">Pagar con Mercado Pago ↗</a>
+         <p class="pay-note">Se abrirá Mercado Pago en otra pestaña. Realiza el pago y luego confirma tu pedido aquí.</p>`;
   }
 }
 
@@ -957,6 +1144,7 @@ document.getElementById('checkoutForm2').addEventListener('submit', async (e) =>
       discountCode: appliedDiscount?.code || null,
       discountAmount: appliedDiscount ? discountAmount() : null,
       paymentMethod: selectedPayMethod,
+      mpLinkType: selectedPayMethod === 'mercadopago' ? mpAvailability.mpLinkType : null,
       receiptUrl,
       status: 'nuevo',
       createdAt: Date.now(),
@@ -1036,7 +1224,7 @@ if (!EDITOR_MODE && 'serviceWorker' in navigator) {
   if (!EDITOR_MODE) loadPageContent();
   loadCategories();
   try {
-    await Promise.all([loadProducts(), loadSettings(), loadProductTypes()]);
+    await Promise.all([loadProducts(), loadSettings(), loadProductTypes(), loadSeasons()]);
     renderCatalog();
     applySocialLinks();
   } catch (err) {
