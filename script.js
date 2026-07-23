@@ -481,12 +481,22 @@ document.getElementById('sortPriceFilter').addEventListener('change', (e) => {
   applyCatalogFilters();
 });
 
-document.getElementById('filtersToggleBtn').addEventListener('click', () => {
-  const panel = document.getElementById('filtersPanel');
-  const btn = document.getElementById('filtersToggleBtn');
-  panel.hidden = !panel.hidden;
-  btn.setAttribute('aria-expanded', String(!panel.hidden));
-});
+function openFiltersPanel() {
+  document.getElementById('filtersPanel').classList.add('open');
+  document.getElementById('filtersOverlay').classList.add('open');
+  document.getElementById('filtersToggleBtn').setAttribute('aria-expanded', 'true');
+  document.body.style.overflow = 'hidden';
+}
+function closeFiltersPanel() {
+  document.getElementById('filtersPanel').classList.remove('open');
+  document.getElementById('filtersOverlay').classList.remove('open');
+  document.getElementById('filtersToggleBtn').setAttribute('aria-expanded', 'false');
+  document.body.style.overflow = '';
+}
+document.getElementById('filtersToggleBtn').addEventListener('click', openFiltersPanel);
+document.getElementById('filtersCloseBtn').addEventListener('click', closeFiltersPanel);
+document.getElementById('filtersOverlay').addEventListener('click', closeFiltersPanel);
+document.getElementById('applyFiltersBtn').addEventListener('click', closeFiltersPanel);
 
 document.getElementById('clearAllFiltersBtn').addEventListener('click', () => {
   currentSort = 'none';
