@@ -104,15 +104,35 @@
       </div>
     </div>
 
-    <div class="filters-extra">
-      <select id="sortPriceFilter" class="filters-extra__select">
-        <option value="none">Ordenar por</option>
-        <option value="price-asc">Precio: menor a mayor</option>
-        <option value="price-desc">Precio: mayor a menor</option>
-      </select>
-      <div class="filters-extra__row" id="seasonFilters"></div>
-      <div class="filters-extra__row" id="priceRangeFilters"></div>
-      <div class="filters-extra__row filters-extra__colors" id="colorFilters"></div>
+    <div class="filters-bar">
+      <button type="button" class="filters-toggle" id="filtersToggleBtn" aria-expanded="false">
+        <span>⚙️ Filtros</span>
+        <span class="filters-toggle__count" id="filtersCount" hidden>0</span>
+      </button>
+    </div>
+
+    <div class="filters-panel" id="filtersPanel" hidden>
+      <div class="filters-panel__group">
+        <label>Ordenar por</label>
+        <select id="sortPriceFilter" class="filters-extra__select">
+          <option value="none">Relevancia</option>
+          <option value="price-asc">Precio: menor a mayor</option>
+          <option value="price-desc">Precio: mayor a menor</option>
+        </select>
+      </div>
+      <div class="filters-panel__group" id="seasonFiltersGroup" hidden>
+        <label>Temporada</label>
+        <div class="filters-extra__row" id="seasonFilters"></div>
+      </div>
+      <div class="filters-panel__group" id="priceRangeFiltersGroup" hidden>
+        <label>Precio</label>
+        <div class="filters-extra__row" id="priceRangeFilters"></div>
+      </div>
+      <div class="filters-panel__group" id="colorFiltersGroup" hidden>
+        <label>Color</label>
+        <div class="filters-extra__row filters-extra__colors" id="colorFilters"></div>
+      </div>
+      <button type="button" class="filters-panel__clear" id="clearAllFiltersBtn">✕ Limpiar filtros</button>
     </div>
 
     <div class="grid" id="grid">
