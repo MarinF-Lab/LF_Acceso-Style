@@ -162,6 +162,13 @@
             <p class="field-hint">¿Falta uno? Agrégalo en <strong>Categorías → Tipos de producto</strong>.</p>
           </div>
           <div class="form-group">
+            <label for="pSeason">Temporada (opcional)</label>
+            <select id="pSeason">
+              <option value="">Sin temporada</option>
+            </select>
+            <p class="field-hint">¿Falta una? Agrégala en <strong>Categorías → Estaciones</strong>.</p>
+          </div>
+          <div class="form-group">
             <label for="pPrice">Precio (CLP)</label>
             <input type="number" id="pPrice" min="0" step="1" required placeholder="34990" />
           </div>
@@ -174,14 +181,22 @@
             </select>
           </div>
           <div class="form-group form-group--full">
+            <label for="pMpLink">Link de pago de Mercado Pago (opcional, monto fijo de este producto)</label>
+            <input type="url" id="pMpLink" class="admin-input" placeholder="https://mpago.la/..." />
+            <p class="field-hint">Solo se usa si el cliente compra un único producto distinto. Con 2+ productos distintos en el carrito se usa el link general de Configuración.</p>
+          </div>
+          <div class="form-group form-group--full">
             <label for="pDesc">Descripción</label>
             <textarea id="pDesc" rows="3" placeholder="Detalle del producto..."></textarea>
           </div>
           <div class="form-group form-group--full">
-            <label for="pImageFile">Imagen del producto</label>
-            <input type="file" id="pImageFile" accept="image/*" />
-            <input type="url" id="pImageUrl" placeholder="...o pega una URL de imagen" class="admin-input" style="margin-top:.5rem" />
-            <img id="pImagePreview" class="image-preview" hidden />
+            <label for="pImageFile">Fotos del producto (hasta 6 — la primera es la portada)</label>
+            <input type="file" id="pImageFile" accept="image/*" multiple />
+            <div class="image-url-row">
+              <input type="url" id="pImageUrl" placeholder="...o pega una URL de imagen" class="admin-input" />
+              <button type="button" class="btn-admin" id="pImageUrlAddBtn">Agregar</button>
+            </div>
+            <div class="image-gallery" id="pImageGallery"></div>
           </div>
           <div class="form-group form-group--full">
             <label>Colores disponibles (separados por coma, en hex: #111111, #2f4b7a)</label>
@@ -262,6 +277,37 @@
             <div class="form-actions">
               <button type="button" class="btn-admin" id="cancelProductTypeForm">Cancelar</button>
               <button type="button" class="btn-admin btn-admin--primary" id="saveProductTypeBtn">Guardar tipo</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="catalog-config-section">
+          <div class="view-toolbar">
+            <div>
+              <h2 class="catalog-config-section__title">Estaciones</h2>
+              <p class="view-intro">Sub-categorías por temporada (ej. Verano, Invierno). Se usan como filtro adicional del catálogo y en el selector "Temporada" al agregar un producto.</p>
+            </div>
+            <button class="btn-admin btn-admin--primary" id="addSeasonBtn">+ Nueva estación</button>
+          </div>
+          <div class="table-wrap">
+            <table class="admin-table" id="seasonsTable">
+              <thead><tr><th>Orden</th><th>Nombre</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div class="panel category-form" id="seasonForm" hidden>
+            <h2 id="seasonFormTitle">Nueva estación</h2>
+            <input type="hidden" id="seasonId" />
+            <div class="form-grid">
+              <div class="form-group form-group--full">
+                <label for="seasonName">Nombre</label>
+                <input type="text" id="seasonName" class="admin-input" placeholder="Ej: Verano" />
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn-admin" id="cancelSeasonForm">Cancelar</button>
+              <button type="button" class="btn-admin btn-admin--primary" id="saveSeasonBtn">Guardar estación</button>
             </div>
           </div>
         </div>

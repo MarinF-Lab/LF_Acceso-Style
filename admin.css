@@ -196,6 +196,7 @@ textarea { resize: vertical; }
 .badge--en_camino { background: rgba(46,105,255,.3); color: #cddcff; }
 .badge--entregado { background: rgba(255,255,255,.08); color: var(--muted); }
 .badge--rechazado { background: rgba(229,72,77,.18); color: var(--danger); }
+.badge--reembolso { background: rgba(229,72,77,.18); color: var(--danger); }
 .badge--low { background: rgba(229,72,77,.18); color: var(--danger); }
 .badge--ok { background: rgba(52,199,142,.14); color: var(--success); }
 
@@ -223,6 +224,26 @@ textarea { resize: vertical; }
 .form-grid h2:first-child { margin-top: 0; padding-top: 0; border-top: none; }
 .form-actions { display: flex; justify-content: flex-end; gap: .7rem; margin-top: .5rem; }
 .image-preview { width: 110px; height: 110px; object-fit: cover; border-radius: var(--radius-sm); margin-top: .6rem; border: 1px solid var(--line); }
+
+.image-url-row { display: flex; gap: .6rem; margin-top: .5rem; }
+.image-url-row .admin-input { flex: 1; }
+.image-gallery { display: flex; flex-wrap: wrap; gap: .7rem; margin-top: .8rem; }
+.image-gallery__item { position: relative; width: 100px; height: 100px; }
+.image-gallery__item img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--line); display: block; }
+.image-gallery__remove {
+  position: absolute; top: -.4rem; right: -.4rem; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--danger); color: #fff; border: 2px solid var(--surface); font-size: .7rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; line-height: 1;
+}
+.image-gallery__cover {
+  position: absolute; bottom: -.4rem; left: -.4rem; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--surface-2); color: var(--gold-soft); border: 1px solid var(--line); font-size: .75rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; line-height: 1;
+}
+.image-gallery__cover-badge {
+  position: absolute; bottom: .3rem; left: .3rem; background: rgba(0,0,0,.65); color: #fff;
+  font-size: .62rem; font-weight: 700; text-transform: uppercase; padding: .15rem .4rem; border-radius: 999px;
+}
 
 .size-stock-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .7rem; }
 .size-stock-item { display: flex; flex-direction: column; gap: .3rem; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: .6rem; }

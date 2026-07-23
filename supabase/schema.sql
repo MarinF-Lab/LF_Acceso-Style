@@ -16,13 +16,16 @@ create table if not exists products (
   name text not null,
   category text,
   type text,
+  season text,
   price numeric not null default 0,
   tag text,
   description text,
-  "imageUrl" text default '',
+  "imageUrl" text default '', -- portada = images[0], se mantiene por compatibilidad
+  images jsonb not null default '[]'::jsonb, -- galería completa (hasta 6 fotos)
   colors jsonb not null default '[]'::jsonb,
   "sizeStock" jsonb not null default '{}'::jsonb,
   stock integer not null default 0,
+  "mpLink" text, -- link de pago de Mercado Pago para este producto (monto fijo)
   "createdAt" bigint,
   "updatedAt" bigint
 );
@@ -78,6 +81,26 @@ insert into product_types (id, name, "order") values
 on conflict (id) do nothing;
 
 -- ----------------------------------------------------------------------------
+-- ESTACIONES (sub-categorías por temporada, filtro adicional del catálogo)
+-- ----------------------------------------------------------------------------
+create table if not exists seasons (
+  id text primary key,
+  name text not null,
+  "order" integer not null default 0
+);
+
+alter table seasons enable row level security;
+create policy "seasons_select_public" on seasons for select using (true);
+create policy "seasons_write_public" on seasons for all using (true) with check (true);
+
+insert into seasons (id, name, "order") values
+  ('verano',    'Verano',    0),
+  ('otono',     'Otoño',     1),
+  ('invierno',  'Invierno',  2),
+  ('primavera', 'Primavera', 3)
+on conflict (id) do nothing;
+
+-- ----------------------------------------------------------------------------
 -- PEDIDOS (orders)
 -- ----------------------------------------------------------------------------
 create table if not exists orders (
@@ -96,7 +119,10 @@ create table if not exists orders (
   items jsonb not null default '[]'::jsonb,
   total numeric not null default 0,
   "paymentMethod" text,
+  "mpLinkType" text, -- 'individual' (link fijo del producto) | 'general' (monto manual) — solo si paymentMethod='mercadopago'
   "receiptUrl" text default '',
+  "discountCode" text,
+  "discountAmount" numeric,
   status text not null default 'nuevo',
   "createdAt" bigint,
   "updatedAt" bigint
@@ -118,6 +144,25 @@ create policy "orders_delete_public" on orders for delete using (true);
 -- Habilita Realtime en orders para que el panel admin se refresque y
 -- muestre una notificación apenas llega un pedido nuevo.
 alter publication supabase_realtime add table orders;
+
+-- ----------------------------------------------------------------------------
+-- CÓDIGOS DE DESCUENTO (únicos por usuario, un solo uso, desde la 2ª compra)
+-- ----------------------------------------------------------------------------
+create table if not exists discount_codes (
+  code text primary key,
+  "userId" uuid references auth.users(id),
+  percent numeric not null default 10,
+  used boolean not null default false,
+  "createdAt" bigint
+);
+
+alter table discount_codes enable row level security;
+create policy "discount_codes_select_own" on discount_codes
+  for select using (auth.uid() = "userId");
+create policy "discount_codes_insert_own" on discount_codes
+  for insert with check (auth.uid() = "userId");
+create policy "discount_codes_update_own" on discount_codes
+  for update using (auth.uid() = "userId") with check (auth.uid() = "userId");
 
 -- ----------------------------------------------------------------------------
 -- CONFIGURACIÓN (settings/store y settings/content de Firestore)

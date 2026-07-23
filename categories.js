@@ -15,6 +15,13 @@ export const DEFAULT_PRODUCT_TYPES = [
   { id: 'chaqueta', name: 'Chaqueta', order: 3 },
 ];
 
+export const DEFAULT_SEASONS = [
+  { id: 'verano',    name: 'Verano',    order: 0 },
+  { id: 'otono',     name: 'Otoño',     order: 1 },
+  { id: 'invierno',  name: 'Invierno',  order: 2 },
+  { id: 'primavera', name: 'Primavera', order: 3 },
+];
+
 // Tallas disponibles al crear/editar un producto y en el selector del
 // quick view de la tienda.
 export const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];

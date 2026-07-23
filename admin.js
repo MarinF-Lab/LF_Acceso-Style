@@ -1,6 +1,6 @@
 import { supabase } from './supabase-config.js';
 import { CONTENT_SECTIONS, CONTENT_FIELDS, applyContent, renderHeroTitle, getContent } from './content-fields.js';
-import { DEFAULT_CATEGORIES, DEFAULT_PRODUCT_TYPES, SIZES, sortCategories } from './categories.js';
+import { DEFAULT_CATEGORIES, DEFAULT_PRODUCT_TYPES, DEFAULT_SEASONS, SIZES, sortCategories } from './categories.js';
 
 // Alcance restringido a esta página para poder instalarse como app aparte
 // de la tienda pública (que registra su propio service worker).
@@ -44,6 +44,8 @@ let editingProductId = null;
 let selectedOrderId = null;
 let allProductTypes = [];
 let editingProductTypeId = null;
+let allSeasons = [];
+let editingSeasonId = null;
 
 const ORDER_STATUSES = [
   { id: 'nuevo',      label: 'Nuevo' },
@@ -66,8 +68,9 @@ const STATUS_MESSAGES = {
   en_camino: (o) => `Hola ${o.customerName}! Tu pedido va en camino. Puedes revisar los datos y el código de seguimiento de tu pedido en tu correo. Si no recibiste el correo, contáctanos para recibir el comprobante y el estado de tu pedido.`,
   entregado: (o) => `Hola ${o.customerName}! 🎉 Tu pedido #${o.orderNumber} fue *entregado*. Gracias por confiar en LF Acceso Style.`,
   rechazado: (o) => `Hola ${o.customerName}, no pudimos confirmar el pago de tu pedido #${o.orderNumber} — revisa que el comprobante de transferencia esté correcto y respóndenos por este medio para resolverlo.`,
+  reembolso: (o) => `Hola ${o.customerName}, el monto que recibimos por tu pedido #${o.orderNumber} no coincide con el total. Vamos a reembolsarte — contáctanos por este medio para coordinarlo.`,
 };
-const EXTRA_STATUS_LABELS = { rechazado: 'Rechazado' };
+const EXTRA_STATUS_LABELS = { rechazado: 'Rechazado', reembolso: 'Reembolso' };
 function statusLabel(id) { return ORDER_STATUSES.find(s => s.id === id)?.label || EXTRA_STATUS_LABELS[id] || id; }
 
 function withTimeout(promise, ms, label) {
@@ -87,7 +90,7 @@ function toast(msg) {
 }
 function waLink(phone, message) {
   const digits = (phone || '').replace(/\D/g, '');
-  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+  return message ? `https://wa.me/${digits}?text=${encodeURIComponent(message)}` : `https://wa.me/${digits}`;
 }
 
 function sanitizeFilename(str) {
@@ -116,11 +119,14 @@ function downloadBlob(file) {
 
 /* Manda las fotos de los productos al proveedor como archivo real (no un
    link) usando el selector nativo de "Compartir" del celular, con WhatsApp
-   como una de las opciones. Si el navegador no lo soporta (ej. computador de
-   escritorio), descarga las imágenes para adjuntar a mano y abre igual el
-   chat de WhatsApp con el texto ya listo. El texto también se copia al
-   portapapeles como respaldo, porque con varios productos WhatsApp no
-   siempre deja el texto pegado a todas las fotos a la vez. */
+   como una de las opciones. El texto NO va dentro del "compartir": se manda
+   solo la imagen (así llega primero, como pidió el cliente) y el texto queda
+   copiado al portapapeles para pegarlo después como el siguiente mensaje —
+   además evita que WhatsApp lo deje pegado como caption de una sola foto
+   cuando son varios productos. Si el navegador no soporta compartir
+   archivos (ej. computador de escritorio), descarga las imágenes para
+   adjuntar a mano y abre el chat de WhatsApp con el texto ya listo para
+   enviar después de la foto. */
 async function sendToSupplier(o, supplierMsg) {
   try { await navigator.clipboard.writeText(supplierMsg); } catch { /* portapapeles no disponible, no es crítico */ }
 
@@ -139,7 +145,8 @@ async function sendToSupplier(o, supplierMsg) {
   const canShareFiles = files.length && navigator.canShare && navigator.canShare({ files });
   if (canShareFiles) {
     try {
-      await navigator.share({ files, text: supplierMsg, title: `Pedido #${o.orderNumber}` });
+      await navigator.share({ files, title: `Pedido #${o.orderNumber}` });
+      toast('📷 Imagen enviada. Pega el texto (ya copiado) como el siguiente mensaje.');
       return;
     } catch (err) {
       if (err?.name === 'AbortError') return; // el usuario canceló el compartir, no insistir
@@ -148,7 +155,8 @@ async function sendToSupplier(o, supplierMsg) {
   }
 
   files.forEach(downloadBlob);
-  window.open(waLink(storeSettings.whatsappSupplier, supplierMsg), '_blank');
+  window.open(waLink(storeSettings.whatsappSupplier, ''), '_blank');
+  toast('🖼️ Imagen descargada — adjúntala y envíala primero, luego pega el texto (ya copiado).');
 }
 
 /* ===================================================================
@@ -185,12 +193,13 @@ async function showAdmin() {
   loginScreen.style.display = 'none';
   adminApp.style.display = 'flex';
   try {
-    await Promise.all([refreshProducts(), refreshOrders(), refreshCategories(), refreshProductTypes(), loadSettings(), loadPageContent()]);
+    await Promise.all([refreshProducts(), refreshOrders(), refreshCategories(), refreshProductTypes(), refreshSeasons(), loadSettings(), loadPageContent()]);
     renderDashboard();
     renderProductsTable();
     renderOrdersTable();
     renderCategoriesTable();
     renderProductTypesTable();
+    renderSeasonsTable();
     populateProductFormSelects();
     subscribeToNewOrders();
   } catch (err) {
@@ -264,6 +273,12 @@ function populateProductFormSelects() {
   const prevType = typeSelect.value;
   typeSelect.innerHTML = allProductTypes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
   if (allProductTypes.some(t => t.id === prevType)) typeSelect.value = prevType;
+
+  const seasonSelect = document.getElementById('pSeason');
+  const prevSeason = seasonSelect.value;
+  seasonSelect.innerHTML = '<option value="">Sin temporada</option>' +
+    allSeasons.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  if (allSeasons.some(s => s.id === prevSeason)) seasonSelect.value = prevSeason;
 }
 
 function totalStock(p) {
@@ -324,13 +339,14 @@ function editProduct(id) {
   document.getElementById('pName').value = p.name || '';
   document.getElementById('pCategory').value = p.category || 'hombre';
   document.getElementById('pType').value = p.type || 'polera';
+  document.getElementById('pSeason').value = p.season || '';
   document.getElementById('pPrice').value = p.price || 0;
   document.getElementById('pTag').value = p.tag || '';
+  document.getElementById('pMpLink').value = p.mpLink || '';
   document.getElementById('pDesc').value = p.description || '';
-  document.getElementById('pImageUrl').value = p.imageUrl || '';
   document.getElementById('pColors').value = (p.colors || []).join(', ');
-  const preview = document.getElementById('pImagePreview');
-  if (p.imageUrl) { preview.src = p.imageUrl; preview.hidden = false; } else { preview.hidden = true; }
+  currentProductImages = p.images?.length ? [...p.images] : (p.imageUrl ? [p.imageUrl] : []);
+  renderImageGallery();
   document.querySelectorAll('#sizeStockGrid input').forEach(inp => {
     inp.value = (p.sizeStock && p.sizeStock[inp.dataset.size]) || 0;
   });
@@ -342,21 +358,75 @@ function resetProductForm() {
   editingProductId = null;
   document.getElementById('productForm').reset();
   document.getElementById('productId').value = '';
-  document.getElementById('pImagePreview').hidden = true;
+  currentProductImages = [];
+  renderImageGallery();
   document.querySelectorAll('#sizeStockGrid input').forEach(inp => inp.value = 0);
   document.getElementById('saveProductBtn').textContent = 'Guardar producto';
 }
 
-document.getElementById('pImageFile').addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const preview = document.getElementById('pImagePreview');
-  preview.src = URL.createObjectURL(file);
-  preview.hidden = false;
+/* ===================================================================
+   GALERÍA DE FOTOS DEL PRODUCTO (hasta MAX_PRODUCT_IMAGES, la primera
+   queda como portada/imageUrl para catálogo, carrito y pedidos).
+   =================================================================== */
+let currentProductImages = [];
+const MAX_PRODUCT_IMAGES = 6;
+
+function renderImageGallery() {
+  const el = document.getElementById('pImageGallery');
+  el.innerHTML = currentProductImages.map((url, idx) => `
+    <div class="image-gallery__item">
+      <img src="${url}" />
+      ${idx === 0
+        ? '<span class="image-gallery__cover-badge">Portada</span>'
+        : `<button type="button" class="image-gallery__cover" data-set-cover="${idx}" title="Usar como portada">★</button>`}
+      <button type="button" class="image-gallery__remove" data-remove-image="${idx}" title="Quitar">✕</button>
+    </div>`).join('');
+  el.querySelectorAll('[data-remove-image]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentProductImages.splice(Number(btn.dataset.removeImage), 1);
+      renderImageGallery();
+    });
+  });
+  el.querySelectorAll('[data-set-cover]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const [url] = currentProductImages.splice(Number(btn.dataset.setCover), 1);
+      currentProductImages.unshift(url);
+      renderImageGallery();
+    });
+  });
+}
+
+async function addProductImageFiles(fileList) {
+  const room = Math.max(0, MAX_PRODUCT_IMAGES - currentProductImages.length);
+  const files = [...fileList].slice(0, room);
+  if (!files.length) { toast(`Máximo ${MAX_PRODUCT_IMAGES} fotos por producto.`); return; }
+  for (const file of files) {
+    try {
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${file.name}`;
+      const { error } = await supabase.storage.from('products').upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data: pub } = supabase.storage.from('products').getPublicUrl(path);
+      currentProductImages.push(pub.publicUrl);
+    } catch (err) {
+      console.error(err);
+      toast('No se pudo subir una imagen: ' + err.message);
+    }
+  }
+  renderImageGallery();
+}
+
+document.getElementById('pImageFile').addEventListener('change', async (e) => {
+  if (e.target.files.length) await addProductImageFiles(e.target.files);
+  e.target.value = '';
 });
-document.getElementById('pImageUrl').addEventListener('input', (e) => {
-  const preview = document.getElementById('pImagePreview');
-  if (e.target.value) { preview.src = e.target.value; preview.hidden = false; }
+document.getElementById('pImageUrlAddBtn').addEventListener('click', () => {
+  const input = document.getElementById('pImageUrl');
+  const url = input.value.trim();
+  if (!url) return;
+  if (currentProductImages.length >= MAX_PRODUCT_IMAGES) { toast(`Máximo ${MAX_PRODUCT_IMAGES} fotos por producto.`); return; }
+  currentProductImages.push(url);
+  input.value = '';
+  renderImageGallery();
 });
 
 document.getElementById('productForm').addEventListener('submit', async (e) => {
@@ -366,16 +436,6 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
   btn.textContent = 'Guardando...';
 
   try {
-    let imageUrl = document.getElementById('pImageUrl').value.trim();
-    const file = document.getElementById('pImageFile').files[0];
-    if (file) {
-      const path = `${Date.now()}-${file.name}`;
-      const { error: uploadError } = await supabase.storage.from('products').upload(path, file, { upsert: true });
-      if (uploadError) throw uploadError;
-      const { data: pub } = supabase.storage.from('products').getPublicUrl(path);
-      imageUrl = pub.publicUrl;
-    }
-
     const sizeStock = {};
     document.querySelectorAll('#sizeStockGrid input').forEach(inp => {
       sizeStock[inp.dataset.size] = Number(inp.value) || 0;
@@ -388,10 +448,13 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
       name: document.getElementById('pName').value.trim(),
       category: document.getElementById('pCategory').value,
       type: document.getElementById('pType').value,
+      season: document.getElementById('pSeason').value || null,
       price: Number(document.getElementById('pPrice').value) || 0,
       tag: document.getElementById('pTag').value || null,
+      mpLink: document.getElementById('pMpLink').value.trim() || null,
       description: document.getElementById('pDesc').value.trim(),
-      imageUrl: imageUrl || '',
+      imageUrl: currentProductImages[0] || '',
+      images: currentProductImages,
       colors,
       sizeStock,
       stock: Object.values(sizeStock).reduce((a, b) => a + b, 0),
@@ -688,6 +751,125 @@ document.getElementById('saveProductTypeBtn').addEventListener('click', async ()
 });
 
 /* ===================================================================
+   ESTACIONES (sub-categorías por temporada — mismo patrón que Tipos)
+   =================================================================== */
+async function refreshSeasons() {
+  const { data, error } = await withTimeout(supabase.from('seasons').select('*'), 8000, 'seasons');
+  if (error) throw error;
+  allSeasons = sortCategories(data.length ? data : DEFAULT_SEASONS);
+}
+
+function renderSeasonsTable() {
+  const tbody = document.querySelector('#seasonsTable tbody');
+  tbody.innerHTML = allSeasons.map((s, idx) => `
+    <tr data-id="${s.id}">
+      <td data-label="Orden">
+        <div class="cat-order-controls">
+          <button type="button" class="cat-order-btn" data-move="up" data-id="${s.id}" ${idx === 0 ? 'disabled' : ''}>↑</button>
+          <button type="button" class="cat-order-btn" data-move="down" data-id="${s.id}" ${idx === allSeasons.length - 1 ? 'disabled' : ''}>↓</button>
+        </div>
+      </td>
+      <td data-label="Nombre">${s.name}</td>
+      <td data-label="">
+        <button type="button" class="btn-admin" data-edit="${s.id}">Editar</button>
+        <button type="button" class="btn-admin btn-admin--danger" data-del="${s.id}">Eliminar</button>
+      </td>
+    </tr>`).join('') || `<tr><td colspan="3" style="text-align:center;color:var(--dim);padding:2rem">Sin estaciones aún. Agrega la primera.</td></tr>`;
+
+  tbody.querySelectorAll('tr[data-id]').forEach(tr => {
+    tr.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      editSeason(tr.dataset.id);
+    });
+  });
+  tbody.querySelectorAll('[data-move]').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); moveSeason(btn.dataset.id, btn.dataset.move); });
+  });
+  tbody.querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); editSeason(btn.dataset.edit); });
+  });
+  tbody.querySelectorAll('[data-del]').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); confirmDeleteSeason(btn.dataset.del); });
+  });
+}
+
+async function moveSeason(id, direction) {
+  const idx = allSeasons.findIndex(s => s.id === id);
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (idx === -1 || swapIdx < 0 || swapIdx >= allSeasons.length) return;
+  const a = allSeasons[idx];
+  const b = allSeasons[swapIdx];
+  const { error } = await supabase.from('seasons').upsert([
+    { ...a, order: b.order },
+    { ...b, order: a.order },
+  ]);
+  if (error) { toast('Error al reordenar: ' + error.message); return; }
+  await refreshSeasons();
+  renderSeasonsTable();
+  populateProductFormSelects();
+}
+
+function editSeason(id) {
+  const s = allSeasons.find(x => x.id === id);
+  if (!s) return;
+  editingSeasonId = id;
+  document.getElementById('seasonId').value = s.id;
+  document.getElementById('seasonName').value = s.name || '';
+  document.getElementById('seasonFormTitle').textContent = 'Editar estación';
+  document.getElementById('seasonForm').hidden = false;
+}
+
+function confirmDeleteSeason(id) {
+  if (!confirm('¿Eliminar esta estación? Esta acción no se puede deshacer.')) return;
+  supabase.from('seasons').delete().eq('id', id).then(async ({ error }) => {
+    if (error) { toast('Error al eliminar: ' + error.message); return; }
+    await refreshSeasons();
+    renderSeasonsTable();
+    populateProductFormSelects();
+    toast('Estación eliminada');
+  });
+}
+
+document.getElementById('addSeasonBtn').addEventListener('click', () => {
+  editingSeasonId = null;
+  document.getElementById('seasonId').value = '';
+  document.getElementById('seasonName').value = '';
+  document.getElementById('seasonFormTitle').textContent = 'Nueva estación';
+  document.getElementById('seasonForm').hidden = false;
+});
+
+document.getElementById('cancelSeasonForm').addEventListener('click', () => {
+  document.getElementById('seasonForm').hidden = true;
+});
+
+document.getElementById('saveSeasonBtn').addEventListener('click', async () => {
+  const name = document.getElementById('seasonName').value.trim();
+  if (!name) { toast('El nombre de la estación es obligatorio'); return; }
+
+  try {
+    if (editingSeasonId) {
+      const { error } = await supabase.from('seasons').update({ name }).eq('id', editingSeasonId);
+      if (error) throw error;
+      toast('Estación actualizada');
+    } else {
+      let id = slugifyCategoryName(name) || `season-${Date.now()}`;
+      if (allSeasons.some(s => s.id === id)) id = `${id}-${Date.now()}`;
+      const order = allSeasons.length ? Math.max(...allSeasons.map(s => s.order ?? 0)) + 1 : 0;
+      const { error } = await supabase.from('seasons').insert({ id, name, order });
+      if (error) throw error;
+      toast('Estación creada');
+    }
+    document.getElementById('seasonForm').hidden = true;
+    await refreshSeasons();
+    renderSeasonsTable();
+    populateProductFormSelects();
+  } catch (err) {
+    console.error(err);
+    toast('Error al guardar: ' + err.message);
+  }
+});
+
+/* ===================================================================
    PEDIDOS
    =================================================================== */
 async function refreshOrders() {
@@ -758,9 +940,10 @@ function renderOrdersTable() {
 
   // Pedidos más nuevos arriba (allOrders ya viene ordenado así desde la
   // consulta); se separan en "activos" (por confirmar/en proceso) e
-  // "historial" (entregados o rechazados).
-  const activeOrders = allOrders.filter(o => !['entregado', 'rechazado'].includes(o.status));
-  const historyOrders = allOrders.filter(o => ['entregado', 'rechazado'].includes(o.status));
+  // "historial" (entregados, rechazados o reembolsados).
+  const CLOSED_STATUSES = ['entregado', 'rechazado', 'reembolso'];
+  const activeOrders = allOrders.filter(o => !CLOSED_STATUSES.includes(o.status));
+  const historyOrders = allOrders.filter(o => CLOSED_STATUSES.includes(o.status));
 
   const activeBody = document.querySelector('#ordersTableActive tbody');
   activeBody.innerHTML = activeOrders.map(orderRowHtml).join('')
@@ -826,11 +1009,19 @@ function renderOrderDetail() {
   if (o.status === 'nuevo') {
     const reviewNote = o.paymentMethod === 'transfer'
       ? 'Revisa el comprobante antes de aceptar el pedido.'
-      : `Verifica en tu cuenta de Mercado Pago que el pago de este pedido esté aprobado antes de aceptar.`;
+      : o.mpLinkType === 'general'
+        ? 'Este pedido se pagó con el link general de Mercado Pago (monto ingresado a mano). Verifica en tu cuenta que el monto recibido coincida con el total antes de aceptar.'
+        : 'Verifica en tu cuenta de Mercado Pago que el pago de este pedido esté aprobado antes de aceptar.';
+    // El botón de reembolso solo aplica cuando se pagó con el link general
+    // (monto manual): ahí existe riesgo real de que el monto no coincida.
+    const refundBtn = (o.paymentMethod === 'mercadopago' && o.mpLinkType === 'general')
+      ? `<button type="button" class="btn-admin btn-full" data-refund>↩️ Reembolsar (monto no coincide)</button>`
+      : '';
     actionsHtml = `
       <p class="order-detail__meta">${reviewNote}</p>
       <div class="order-actions">
         <button type="button" class="btn-admin btn-admin--primary btn-full" data-accept>✓ Aceptar pedido</button>
+        ${refundBtn}
         <button type="button" class="btn-admin btn-admin--danger btn-full" data-reject>✕ Rechazar pedido</button>
       </div>`;
   } else if (o.status === 'armando') {
@@ -846,6 +1037,8 @@ function renderOrderDetail() {
       </div>`;
   } else if (o.status === 'rechazado') {
     actionsHtml = `<p class="order-detail__meta">Este pedido fue rechazado.</p>`;
+  } else if (o.status === 'reembolso') {
+    actionsHtml = `<p class="order-detail__meta">Este pedido quedó marcado para reembolso.</p>`;
   } else {
     actionsHtml = `<p class="order-detail__meta">Pedido entregado — ciclo cerrado.</p>`;
   }
@@ -854,6 +1047,7 @@ function renderOrderDetail() {
     <h3>Pedido #${o.orderNumber}</h3>
     <p class="order-detail__meta">${o.customerName} · ${o.customerPhone || 'sin teléfono'} · ${new Date(o.createdAt).toLocaleString('es-CL')}</p>
     ${itemsHtml}
+    ${o.discountCode ? `<p class="order-detail__meta">🎟️ Descuento aplicado: ${o.discountCode} (−${fmt(o.discountAmount || 0)})</p>` : ''}
     <div class="order-total"><span>Total</span><span>${fmt(o.total)}</span></div>
     <p class="order-detail__meta">Pago: ${paymentLabel(o.paymentMethod)}${shippingMeta ? ` · Envío a: ${shippingMeta}` : ''}</p>
     ${o.customerRut ? `<p class="order-detail__meta">RUT: ${o.customerRut}</p>` : ''}
@@ -874,6 +1068,10 @@ function renderOrderDetail() {
   el.querySelector('[data-reject]')?.addEventListener('click', () => {
     if (!confirm('¿Rechazar este pedido? Se avisará al cliente por WhatsApp.')) return;
     updateOrderStatus(o, 'rechazado');
+  });
+  el.querySelector('[data-refund]')?.addEventListener('click', () => {
+    if (!confirm('¿Marcar este pedido para reembolso? Se avisará al cliente por WhatsApp.')) return;
+    updateOrderStatus(o, 'reembolso');
   });
   el.querySelector('[data-next]')?.addEventListener('click', (e) => updateOrderStatus(o, e.target.dataset.next));
   el.querySelector('[data-delete-order]')?.addEventListener('click', () => confirmDeleteOrder(o.id));
