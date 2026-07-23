@@ -298,8 +298,10 @@ let currentSeasonFilter = 'all';
 
 async function loadSeasons() {
   const el = document.getElementById('seasonFilters');
+  const groupEl = document.getElementById('seasonFiltersGroup');
   const renderChips = (seasons) => {
     const sorted = [...seasons].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    groupEl.hidden = !sorted.length;
     if (!sorted.length) { el.innerHTML = ''; return; }
     el.innerHTML = `<button type="button" class="chip is-active" data-season="all">Todas las temporadas</button>` +
       sorted.map(s => `<button type="button" class="chip" data-season="${s.id}">${s.name}</button>`).join('');
@@ -319,6 +321,7 @@ async function loadSeasons() {
   } catch (err) {
     console.error('No se pudieron cargar las estaciones:', err);
     el.innerHTML = '';
+    groupEl.hidden = true;
   }
 }
 
@@ -406,11 +409,26 @@ function applyCatalogFilters() {
     });
     sorted.forEach(c => grid.appendChild(c));
   }
+
+  updateFiltersCount();
+}
+
+function updateFiltersCount() {
+  const count = [
+    currentSort !== 'none',
+    !!currentPriceRange,
+    !!currentColor,
+    currentSeasonFilter !== 'all',
+  ].filter(Boolean).length;
+  const badge = document.getElementById('filtersCount');
+  badge.textContent = count;
+  badge.hidden = count === 0;
 }
 
 function renderExtraFilters() {
   const prices = allProducts.map(p => Number(p.price) || 0).filter(p => p > 0);
   const priceEl = document.getElementById('priceRangeFilters');
+  document.getElementById('priceRangeFiltersGroup').hidden = prices.length <= 1;
   if (prices.length > 1) {
     const min = Math.min(...prices), max = Math.max(...prices);
     const bucketCount = 4;
@@ -440,6 +458,7 @@ function renderExtraFilters() {
 
   const colorSet = [...new Set(allProducts.flatMap(p => p.colors || []))];
   const colorEl = document.getElementById('colorFilters');
+  document.getElementById('colorFiltersGroup').hidden = !colorSet.length;
   if (colorSet.length) {
     colorEl.innerHTML = `<button type="button" class="chip is-active" data-color-all>Todos los colores</button>` +
       colorSet.map(c => `<button type="button" class="color-swatch-btn" data-color="${c}" style="--s:${c}" title="${c}"></button>`).join('');
@@ -459,6 +478,28 @@ function renderExtraFilters() {
 
 document.getElementById('sortPriceFilter').addEventListener('change', (e) => {
   currentSort = e.target.value;
+  applyCatalogFilters();
+});
+
+document.getElementById('filtersToggleBtn').addEventListener('click', () => {
+  const panel = document.getElementById('filtersPanel');
+  const btn = document.getElementById('filtersToggleBtn');
+  panel.hidden = !panel.hidden;
+  btn.setAttribute('aria-expanded', String(!panel.hidden));
+});
+
+document.getElementById('clearAllFiltersBtn').addEventListener('click', () => {
+  currentSort = 'none';
+  currentPriceRange = null;
+  currentColor = null;
+  currentSeasonFilter = 'all';
+  document.getElementById('sortPriceFilter').value = 'none';
+  document.querySelectorAll('#priceRangeFilters .chip').forEach(c => c.classList.remove('is-active'));
+  document.querySelector('#priceRangeFilters [data-price-all]')?.classList.add('is-active');
+  document.querySelectorAll('#colorFilters .color-swatch-btn').forEach(c => c.classList.remove('is-active'));
+  document.querySelector('#colorFilters [data-color-all]')?.classList.add('is-active');
+  document.querySelectorAll('#seasonFilters .chip').forEach(c => c.classList.remove('is-active'));
+  document.querySelector('#seasonFilters [data-season="all"]')?.classList.add('is-active');
   applyCatalogFilters();
 });
 
